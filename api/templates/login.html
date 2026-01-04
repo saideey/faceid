@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kirish - Davomat Tizimi</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            max-width: 1000px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        @media (max-width: 768px) {
+            .login-card {
+                grid-template-columns: 1fr;
+            }
+
+            .login-left {
+                display: none;
+            }
+        }
+
+        .login-left {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .login-right {
+            padding: 3rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.875rem;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .floating-icon {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .tab-button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tab-button:not(.active) {
+            color: #6b7280;
+            background: #f3f4f6;
+        }
+
+        .tab-button:not(.active):hover {
+            background: #e5e7eb;
+        }
+
+        .notification {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            animation: slideInRight 0.3s ease;
+            z-index: 9999;
+            display: none;
+        }
+
+        .notification.show {
+            display: block;
+        }
+
+        .notification.success {
+            background: #10b981;
+            color: white;
+        }
+
+        .notification.error {
+            background: #ef4444;
+            color: white;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <!-- Left Side -->
+            <div class="login-left">
+                <div class="floating-icon mb-8">
+                    <div class="w-24 h-24 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                        <i class="fas fa-clock text-6xl text-white"></i>
+                    </div>
+                </div>
+
+                <h1 class="text-4xl font-bold mb-4 text-center">Davomat Tizimi</h1>
+                <p class="text-lg text-center opacity-90 mb-8">Xodimlar davomatini kuzatish va boshqarish tizimi</p>
+
+                <div class="space-y-4 text-sm opacity-90">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle mr-3 text-xl"></i>
+                        <span>Face ID bilan davomat</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle mr-3 text-xl"></i>
+                        <span>Avtomatik oylik hisoblash</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle mr-3 text-xl"></i>
+                        <span>Real-time monitoring</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle mr-3 text-xl"></i>
+                        <span>Bonus va jarima tizimi</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side -->
+            <div class="login-right">
+                <div class="mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Xush kelibsiz!</h2>
+                    <p class="text-gray-600">Tizimga kirish uchun ma'lumotlaringizni kiriting</p>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex gap-2 mb-8">
+                    <button onclick="switchTab('company')" id="companyTab" class="tab-button active flex-1">
+                        <i class="fas fa-building mr-2"></i>
+                        Kompaniya
+                    </button>
+                </div>
+
+                <!-- Company Login Form -->
+                <form id="companyLoginForm" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-envelope mr-2 text-gray-400"></i>
+                            Email
+                        </label>
+                        <input type="email" id="companyEmail" required class="form-input"
+                            placeholder="admin@company.com">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-lock mr-2 text-gray-400"></i>
+                            Parol
+                        </label>
+                        <div class="relative">
+                            <input type="password" id="companyPassword" required class="form-input pr-12"
+                                placeholder="••••••••">
+                            <button type="button" onclick="togglePassword('companyPassword')"
+                                class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center">
+                            <input type="checkbox" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <span class="ml-2 text-sm text-gray-600">Meni eslab qol</span>
+                        </label>
+                        <a href="#" class="text-sm text-purple-600 hover:text-purple-700 font-medium">
+                            Parolni unutdingizmi?
+                        </a>
+                    </div>
+
+                    <button type="submit" class="btn-primary flex items-center justify-center">
+                        <span id="companyLoginText">Kirish</span>
+                        <div class="spinner ml-3" id="companySpinner"></div>
+                    </button>
+                </form>
+
+                <!-- Super Admin Login Form -->
+                <form id="superadminLoginForm" class="space-y-6 hidden">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-envelope mr-2 text-gray-400"></i>
+                            Email
+                        </label>
+                        <input type="email" id="superadminEmail" required class="form-input"
+                            placeholder="admin@system.com">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-lock mr-2 text-gray-400"></i>
+                            Parol
+                        </label>
+                        <div class="relative">
+                            <input type="password" id="superadminPassword" required class="form-input pr-12"
+                                placeholder="••••••••">
+                            <button type="button" onclick="togglePassword('superadminPassword')"
+                                class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary flex items-center justify-center">
+                        <span id="superadminLoginText">Kirish</span>
+                        <div class="spinner ml-3" id="superadminSpinner"></div>
+                    </button>
+                </form>
+
+                <div class="mt-8 text-center">
+                    <p class="text-sm text-gray-500">
+                        © 2025 Davomat Tizimi. Barcha huquqlar himoyalangan.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">
+        <div class="flex items-center">
+            <i id="notificationIcon" class="fas fa-check-circle mr-3 text-xl"></i>
+            <p id="notificationMessage">Success message</p>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script>
+        // Switch between tabs
+        function switchTab(tab) {
+            // Update tab buttons
+            document.getElementById('companyTab').classList.remove('active');
+            document.getElementById('superadminTab').classList.remove('active');
+            document.getElementById(tab + 'Tab').classList.add('active');
+
+            // Update forms
+            document.getElementById('companyLoginForm').classList.add('hidden');
+            document.getElementById('superadminLoginForm').classList.add('hidden');
+            document.getElementById(tab + 'LoginForm').classList.remove('hidden');
+        }
+
+        // Toggle password visibility
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const icon = input.nextElementSibling.querySelector('i');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const icon = document.getElementById('notificationIcon');
+            const messageEl = document.getElementById('notificationMessage');
+
+            notification.className = 'notification show ' + type;
+            messageEl.textContent = message;
+
+            if (type === 'success') {
+                icon.className = 'fas fa-check-circle mr-3 text-xl';
+            } else {
+                icon.className = 'fas fa-times-circle mr-3 text-xl';
+            }
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Company Login
+        document.getElementById('companyLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('companyEmail').value;
+            const password = document.getElementById('companyPassword').value;
+
+            const spinner = document.getElementById('companySpinner');
+            const text = document.getElementById('companyLoginText');
+
+            spinner.style.display = 'block';
+            text.textContent = 'Yuklanmoqda...';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const result = await response.json();
+                console.log('Login response:', result);
+
+                if (response.ok && result.success && result.data) {
+                    // Save token and user
+                    setToken(result.data.token);
+                    setCurrentUser(result.data.user);
+
+                    showNotification('Muvaffaqiyatli kirildi!', 'success');
+
+                    // Use replace to avoid adding to history
+                    setTimeout(() => {
+                        window.location.replace('/dashboard');
+                    }, 500);
+                } else {
+                    throw new Error(result.message || 'Login failed');
+                }
+
+            } catch (error) {
+                console.error('Login error:', error);
+                showNotification(error.message || 'Email yoki parol noto\'g\'ri', 'error');
+            } finally {
+                spinner.style.display = 'none';
+                text.textContent = 'Kirish';
+            }
+        });
+
+        // Super Admin Login
+        document.getElementById('superadminLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('superadminEmail').value;
+            const password = document.getElementById('superadminPassword').value;
+
+            const spinner = document.getElementById('superadminSpinner');
+            const text = document.getElementById('superadminLoginText');
+
+            spinner.style.display = 'block';
+            text.textContent = 'Yuklanmoqda...';
+
+            try {
+                const response = await fetch('/api/superadmin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const result = await response.json();
+                console.log('Super admin login response:', result);
+
+                if (response.ok && result.success && result.data) {
+                    // Save token and user
+                    setToken(result.data.token);
+                    setCurrentUser(result.data.user);
+
+                    showNotification('Muvaffaqiyatli kirildi!', 'success');
+
+                    // Use replace to avoid adding to history
+                    setTimeout(() => {
+                        window.location.replace('/dashboard');
+                    }, 500);
+                } else {
+                    throw new Error(result.message || 'Login failed');
+                }
+
+            } catch (error) {
+                console.error('Login error:', error);
+                showNotification(error.message || 'Email yoki parol noto\'g\'ri', 'error');
+            } finally {
+                spinner.style.display = 'none';
+                text.textContent = 'Kirish';
+            }
+        });
+    </script>
+</body>
+</html>

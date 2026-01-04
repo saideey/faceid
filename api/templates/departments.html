@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Bo'limlar - Davomat Tizimi{% endblock %}
+{% block page_title %}Bo'limlar{% endblock %}
+{% block page_subtitle %}Bo'limlarni boshqarish{% endblock %}
+
+{% block content %}
+<!-- Actions -->
+<div class="mb-6 flex justify-between items-center">
+    <div class="flex gap-3">
+        <button onclick="openAddDepartmentModal()" class="btn-primary">
+            <i class="fas fa-plus mr-2"></i>
+            Bo'lim qo'shish
+        </button>
+    </div>
+    <div class="relative">
+        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+        <input type="text" id="searchInput" placeholder="Qidirish..." class="form-input pl-10">
+    </div>
+</div>
+
+<!-- Departments Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="departmentsGrid">
+    <!-- Filled by JS -->
+</div>
+
+<!-- Add/Edit Department Modal -->
+<div id="departmentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4">
+        <div class="border-b border-gray-200 px-8 py-6">
+            <h2 class="text-2xl font-bold text-gray-800" id="modalTitle">Bo'lim qo'shish</h2>
+        </div>
+        
+        <form id="departmentForm" class="p-8">
+            <input type="hidden" id="departmentId">
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="form-label">Nomi <span class="text-red-500">*</span></label>
+                    <input type="text" id="departmentName" required class="form-input" placeholder="IT bo'limi">
+                </div>
+                
+                <div>
+                    <label class="form-label">Tavsif</label>
+                    <textarea id="departmentDescription" class="form-input" rows="3" placeholder="Bo'lim haqida ma'lumot..."></textarea>
+                </div>
+                
+                <div>
+                    <label class="form-label">Holat</label>
+                    <select id="departmentStatus" class="form-input">
+                        <option value="active">Faol</option>
+                        <option value="inactive">Nofaol</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-end gap-3 mt-8">
+                <button type="button" onclick="closeDepartmentModal()" class="btn-secondary">
+                    Bekor qilish
+                </button>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save mr-2"></i>
+                    Saqlash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let departments = [];
+
+async function loadDepartments() {
+    showLoading();
+    
+    try {
+        const response = await API.departments.list({ per_page: 100 });
+        departments = response.departments || [];
+        
+        renderDepartments();
+    } catch (error) {
+        console.error('Error loading departments:', error);
+        showNotification('Bo\'limlarni yuklashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function renderDepartments() {
+    const grid = document.getElementById('departmentsGrid');
+    
+    if (departments.length === 0) {
+        grid.innerHTML = `
+            <div class="col-span-3 text-center py-12">
+                <i class="fas fa-sitemap text-gray-300 text-6xl mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">Bo'limlar mavjud emas</h3>
+                <p class="text-gray-500">Yangi bo'lim qo'shish uchun yuqoridagi tugmani bosing</p>
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = departments.map(dept => `
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition">
+            <div class="flex items-start justify-between mb-4">
+                <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-sitemap text-white text-xl"></i>
+                </div>
+                <span class="badge ${dept.status === 'active' ? 'badge-success' : 'badge-secondary'}">
+                    ${dept.status === 'active' ? 'Faol' : 'Nofaol'}
+                </span>
+            </div>
+            
+            <h3 class="text-lg font-bold text-gray-800 mb-2">${dept.name}</h3>
+            
+            ${dept.description ? `
+                <p class="text-sm text-gray-600 mb-4 line-clamp-2">${dept.description}</p>
+            ` : '<p class="text-sm text-gray-400 mb-4 italic">Tavsif yo\'q</p>'}
+            
+            <div class="pt-4 border-t border-gray-200 flex items-center justify-between">
+                <div class="text-sm text-gray-500">
+                    <i class="fas fa-users mr-1"></i>
+                    ${dept.employee_count || 0} xodim
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="editDepartment('${dept.id}')" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteDepartment('${dept.id}')" class="text-red-600 hover:text-red-800">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openAddDepartmentModal() {
+    document.getElementById('modalTitle').textContent = 'Bo\'lim qo\'shish';
+    document.getElementById('departmentForm').reset();
+    document.getElementById('departmentId').value = '';
+    document.getElementById('departmentModal').classList.remove('hidden');
+}
+
+function closeDepartmentModal() {
+    document.getElementById('departmentModal').classList.add('hidden');
+}
+
+async function editDepartment(id) {
+    showLoading();
+    
+    try {
+        const dept = await API.departments.get(id);
+        
+        document.getElementById('modalTitle').textContent = 'Bo\'limni tahrirlash';
+        document.getElementById('departmentId').value = dept.id;
+        document.getElementById('departmentName').value = dept.name;
+        document.getElementById('departmentDescription').value = dept.description || '';
+        document.getElementById('departmentStatus').value = dept.status;
+        
+        document.getElementById('departmentModal').classList.remove('hidden');
+    } catch (error) {
+        console.error('Error loading department:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+document.getElementById('departmentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const id = document.getElementById('departmentId').value;
+    const data = {
+        name: document.getElementById('departmentName').value,
+        description: document.getElementById('departmentDescription').value,
+        status: document.getElementById('departmentStatus').value
+    };
+    
+    showLoading();
+    
+    try {
+        if (id) {
+            await API.departments.update(id, data);
+            showNotification('Bo\'lim yangilandi', 'success');
+        } else {
+            await API.departments.create(data);
+            showNotification('Bo\'lim qo\'shildi', 'success');
+        }
+        
+        closeDepartmentModal();
+        loadDepartments();
+    } catch (error) {
+        console.error('Error saving department:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
+async function deleteDepartment(id) {
+    if (!confirm('Bo\'limni o\'chirmoqchimisiz?')) return;
+    
+    showLoading();
+    
+    try {
+        await API.departments.delete(id);
+        showNotification('Bo\'lim o\'chirildi', 'success');
+        loadDepartments();
+    } catch (error) {
+        console.error('Error deleting department:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Search
+document.getElementById('searchInput').addEventListener('input', (e) => {
+    const search = e.target.value.toLowerCase();
+    const filtered = departments.filter(d => 
+        d.name.toLowerCase().includes(search) ||
+        (d.description && d.description.toLowerCase().includes(search))
+    );
+    
+    departments = filtered;
+    renderDepartments();
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadDepartments();
+});
+</script>
+{% endblock %}

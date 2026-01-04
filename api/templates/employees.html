@@ -1,0 +1,1130 @@
+{% extends "base.html" %}
+
+{% block title %}Xodimlar - Davomat Tizimi{% endblock %}
+{% block page_title %}Xodimlar{% endblock %}
+{% block page_subtitle %}Barcha xodimlarni boshqarish{% endblock %}
+
+{% block content %}
+<!-- Filters and Actions -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <!-- Search and Filters -->
+        <div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="relative">
+                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="searchInput" placeholder="Qidirish (ism, ID, telefon)..."
+                    class="form-input pl-10">
+            </div>
+
+            <select id="branchFilter" class="form-input">
+                <option value="">Barcha filiallar</option>
+            </select>
+
+            <select id="departmentFilter" class="form-input">
+                <option value="">Barcha bo'limlar</option>
+            </select>
+
+            <select id="statusFilter" class="form-input">
+                <option value="">Barcha holatlar</option>
+                <option value="active">Faol</option>
+                <option value="inactive">Nofaol</option>
+                <option value="suspended">To'xtatilgan</option>
+            </select>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-3">
+            <button onclick="exportEmployees()" class="btn-secondary">
+                <i class="fas fa-download mr-2"></i>
+                Eksport
+            </button>
+            <button onclick="openAddModal()" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i>
+                Xodim qo'shish
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+    <div class="stat-card p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-500 mb-1">Jami xodimlar</p>
+                <p class="text-2xl font-bold text-gray-800" id="totalCount">0</p>
+            </div>
+            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-users text-blue-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-500 mb-1">Faol</p>
+                <p class="text-2xl font-bold text-green-600" id="activeCount">0</p>
+            </div>
+            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-500 mb-1">Nofaol</p>
+                <p class="text-2xl font-bold text-gray-600" id="inactiveCount">0</p>
+            </div>
+            <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-times-circle text-gray-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-500 mb-1">O'rtacha oylik</p>
+                <p class="text-2xl font-bold text-purple-600" id="avgSalary">0</p>
+            </div>
+            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-money-bill-wave text-purple-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Employees Table -->
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>
+                    <input type="checkbox" id="selectAll" class="rounded">
+                </th>
+                <th>Xodim</th>
+                <th>Filial</th>
+                <th>Bo'lim</th>
+                <th>Lavozim</th>
+                <th>Telefon</th>
+                <th>Oylik</th>
+                <th>Ish vaqti</th>
+                <th>Holat</th>
+                <th>Harakatlar</th>
+            </tr>
+        </thead>
+        <tbody id="employeesTableBody">
+            <!-- Filled by JS -->
+        </tbody>
+    </table>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="hidden py-16 text-center">
+        <i class="fas fa-users text-gray-300 text-6xl mb-4"></i>
+        <h3 class="text-xl font-semibold text-gray-700 mb-2">Xodimlar topilmadi</h3>
+        <p class="text-gray-500 mb-6">Yangi xodim qo'shish uchun yuqoridagi tugmani bosing</p>
+        <button onclick="openAddModal()" class="btn-primary">
+            <i class="fas fa-plus mr-2"></i>
+            Xodim qo'shish
+        </button>
+    </div>
+</div>
+
+<!-- Pagination -->
+<div class="flex items-center justify-between mt-6">
+    <div class="text-sm text-gray-600">
+        Jami <span id="totalEmployees">0</span> ta xodim
+    </div>
+    <div class="flex gap-2" id="paginationContainer">
+        <!-- Filled by JS -->
+    </div>
+</div>
+
+<!-- Add/Edit Employee Modal -->
+<div id="employeeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b border-gray-200 px-8 py-6 flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800" id="modalTitle">Yangi xodim qo'shish</h2>
+                <p class="text-sm text-gray-500 mt-1">Xodim ma'lumotlarini to'ldiring</p>
+            </div>
+            <button onclick="closeEmployeeModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        <form id="employeeForm" class="p-8">
+            <input type="hidden" id="employeeId">
+
+            <!-- Personal Information -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-user text-blue-600 mr-2"></i>
+                    Shaxsiy ma'lumotlar
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="form-label">F.I.O. <span class="text-red-500">*</span></label>
+                        <input type="text" id="fullName" required class="form-input" placeholder="Ali Valiyev">
+                    </div>
+
+                    <div>
+                        <label class="form-label">Xodim ID <span class="text-red-500">*</span></label>
+                        <input type="text" id="employeeNo" required class="form-input" placeholder="001">
+                    </div>
+
+                    <div>
+                        <label class="form-label">Email</label>
+                        <input type="email" id="email" class="form-input" placeholder="ali@example.com">
+                    </div>
+
+                    <div>
+                        <label class="form-label">Telefon</label>
+                        <input type="tel" id="phone" class="form-input" placeholder="+998901234567">
+                    </div>
+
+                    <div>
+                        <label class="form-label">Karta raqami</label>
+                        <input type="text" id="cardNo" class="form-input" placeholder="CARD001">
+                    </div>
+
+                    <div>
+                        <label class="form-label">Holat</label>
+                        <select id="status" class="form-input">
+                            <option value="active">Faol</option>
+                            <option value="inactive">Nofaol</option>
+                            <option value="suspended">To'xtatilgan</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Work Information -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-briefcase text-blue-600 mr-2"></i>
+                    Ish ma'lumotlari
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="form-label">Filial <span class="text-red-500">*</span></label>
+                        <select id="branchId" required class="form-input">
+                            <option value="">Tanlang</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="form-label">Bo'lim</label>
+                        <select id="departmentId" class="form-input">
+                            <option value="">Tanlang</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="form-label">Lavozim</label>
+                        <input type="text" id="position" class="form-input" placeholder="Dasturchi">
+                    </div>
+
+                    <div>
+                        <label class="form-label">Ishga kirgan sana</label>
+                        <input type="date" id="hireDate" class="form-input">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Work Schedule -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-calendar-week text-blue-600 mr-2"></i>
+                    Haftalik ish jadvali
+                </h3>
+                <p class="text-sm text-gray-600 mb-4">Har bir kun uchun ish vaqtini belgilang (24-soatlik format: 09:00, 13:30, 21:00). Dam olish kunlarini belgilash uchun "Dam olish" belgisini qo'ying.</p>
+
+                <div class="space-y-3">
+                    <!-- Monday -->
+                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="col-span-3 font-medium text-gray-700">Dushanba</div>
+                        <div class="col-span-3">
+                            <input type="text" id="mon_start" class="form-input text-sm" value="09:00"
+                                   placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
+                        </div>
+                        <div class="col-span-3">
+                            <input type="text" id="mon_end" class="form-input text-sm" value="18:00"
+                                   placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
+                        </div>
+                        <div class="col-span-3 flex items-center justify-center">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="mon_off" class="mr-2" onchange="toggleDayOff('mon')">
+                                <span class="text-sm text-gray-600">Dam olish</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Tuesday -->
+                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="col-span-3 font-medium text-gray-700">Seshanba</div>
+                        <div class="col-span-3">
+                            <input type="text" id="tue_start" class="form-input text-sm" value="09:00"
+                                   placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
+                        </div>
+                        <div class="col-span-3">
+                            <input type="text" id="tue_end" class="form-input text-sm" value="18:00"
+                                   placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
+                        </div>
+                        <div class="col-span-3 flex items-center justify-center">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="tue_off" class="mr-2" onchange="toggleDayOff('tue')">
+                                <span class="text-sm text-gray-600">Dam olish</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Wednesday -->
+                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="col-span-3 font-medium text-gray-700">Chorshanba</div>
+                        <div class="col-span-3">
+                            <input type="text" id="wed_start" class="form-input text-sm" value="09:00"
+                                   placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
+                        </div>
+                        <div class="col-span-3">
+                            <input type="text" id="wed_end" class="form-input text-sm" value="18:00"
+                                   placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
+                        </div>
+                        <div class="col-span-3 flex items-center justify-center">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="wed_off" class="mr-2" onchange="toggleDayOff('wed')">
+                                <span class="text-sm text-gray-600">Dam olish</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Thursday -->
+                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="col-span-3 font-medium text-gray-700">Payshanba</div>
+                        <div class="col-span-3">
+                            <input type="text" id="thu_start" class="form-input text-sm" value="09:00"
+                                   placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
+                        </div>
+                        <div class="col-span-3">
+                            <input type="text" id="thu_end" class="form-input text-sm" value="18:00"
+                                   placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
+                        </div>
+                        <div class="col-span-3 flex items-center justify-center">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="thu_off" class="mr-2" onchange="toggleDayOff('thu')">
+                                <span class="text-sm text-gray-600">Dam olish</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Friday -->
+                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="col-span-3 font-medium text-gray-700">Juma</div>
+                        <div class="col-span-3">
+                            <input type="text" id="fri_start" class="form-input text-sm" value="09:00"
+                                   placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
+                        </div>
+                        <div class="col-span-3">
+                            <input type="text" id="fri_end" class="form-input text-sm" value="18:00"
+                                   placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
+                        </div>
+                        <div class="col-span-3 flex items-center justify-center">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="fri_off" class="mr-2" onchange="toggleDayOff('fri')">
+                                <span class="text-sm text-gray-600">Dam olish</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Saturday -->
+                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="col-span-3 font-medium text-gray-700">Shanba</div>
+                        <div class="col-span-3">
+                            <input type="text" id="sat_start" class="form-input text-sm" value="09:00"
+                                   placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" disabled>
+                        </div>
+                        <div class="col-span-3">
+                            <input type="text" id="sat_end" class="form-input text-sm" value="18:00"
+                                   placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" disabled>
+                        </div>
+                        <div class="col-span-3 flex items-center justify-center">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="sat_off" class="mr-2" checked onchange="toggleDayOff('sat')">
+                                <span class="text-sm text-gray-600">Dam olish</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Sunday -->
+                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="col-span-3 font-medium text-gray-700">Yakshanba</div>
+                        <div class="col-span-3">
+                            <input type="text" id="sun_start" class="form-input text-sm" value="09:00"
+                                   placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" disabled>
+                        </div>
+                        <div class="col-span-3">
+                            <input type="text" id="sun_end" class="form-input text-sm" value="18:00"
+                                   placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" disabled>
+                        </div>
+                        <div class="col-span-3 flex items-center justify-center">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="sun_off" class="mr-2" checked onchange="toggleDayOff('sun')">
+                                <span class="text-sm text-gray-600">Dam olish</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lunch break - moved here -->
+                <div class="mt-4 p-4 bg-blue-50 rounded-lg">
+                    <label class="form-label text-sm">Tushlik tanaffusi (daqiqa)</label>
+                    <input type="number" id="lunchBreak" class="form-input" value="60" min="0" max="180">
+                </div>
+            </div>
+
+            <!-- Salary Information -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-money-bill-wave text-blue-600 mr-2"></i>
+                    Oylik ma'lumotlari
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="form-label">Maosh turi</label>
+                        <select id="salaryType" class="form-input">
+                            <option value="monthly">Oylik</option>
+                            <option value="daily">Kunlik</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="form-label">Maosh miqdori (UZS)</label>
+                        <input type="number" id="salary" class="form-input" placeholder="3000000" step="100000">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
+                <button type="button" onclick="closeEmployeeModal()" class="btn-secondary">
+                    <i class="fas fa-times mr-2"></i>
+                    Bekor qilish
+                </button>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save mr-2"></i>
+                    Saqlash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Employee Detail Modal -->
+<div id="employeeDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b border-gray-200 px-8 py-6 flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">Xodim ma'lumotlari</h2>
+                <p class="text-sm text-gray-500 mt-1" id="detailEmployeeNo"></p>
+            </div>
+            <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        <div class="p-8">
+            <div id="employeeDetailContent">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-trash-alt text-red-600 text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Xodimni o'chirish</h3>
+            <p class="text-gray-600 mb-6">Haqiqatan ham bu xodimni o'chirmoqchimisiz? Bu amal qaytarilmaydi.</p>
+            <div class="flex gap-3">
+                <button onclick="closeDeleteModal()" class="flex-1 btn-secondary">
+                    Bekor qilish
+                </button>
+                <button onclick="confirmDelete()" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                    O'chirish
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let employees = [];
+let branches = [];
+let departments = [];
+let currentPage = 1;
+let perPage = 20;
+let deleteEmployeeId = null;
+
+// Load initial data
+async function loadEmployees() {
+    showLoading();
+
+    try {
+        const filters = {
+            page: currentPage,
+            per_page: perPage
+        };
+
+        const search = document.getElementById('searchInput').value;
+        if (search) filters.search = search;
+
+        const branchId = document.getElementById('branchFilter').value;
+        if (branchId) filters.branch_id = branchId;
+
+        const departmentId = document.getElementById('departmentFilter').value;
+        if (departmentId) filters.department_id = departmentId;
+
+        const status = document.getElementById('statusFilter').value;
+        if (status) filters.status = status;
+
+        const response = await API.employees.list(filters);
+        employees = response.employees || [];
+
+        renderEmployeesTable();
+        updateStats();
+        renderPagination(response.pagination);
+
+    } catch (error) {
+        console.error('Error loading employees:', error);
+        showNotification('Xodimlarni yuklashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function loadBranches() {
+    try {
+        const response = await API.branches.list({ per_page: 100 });
+        branches = response.branches || [];
+
+        const branchFilter = document.getElementById('branchFilter');
+        const branchSelect = document.getElementById('branchId');
+
+        branchFilter.innerHTML = '<option value="">Barcha filiallar</option>' +
+            branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+
+        branchSelect.innerHTML = '<option value="">Tanlang</option>' +
+            branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+    } catch (error) {
+        console.error('Error loading branches:', error);
+    }
+}
+
+async function loadDepartments() {
+    try {
+        const response = await API.departments.list({ per_page: 100 });
+        departments = response.departments || [];
+
+        const deptFilter = document.getElementById('departmentFilter');
+        const deptSelect = document.getElementById('departmentId');
+
+        deptFilter.innerHTML = '<option value="">Barcha bo\'limlar</option>' +
+            departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+
+        deptSelect.innerHTML = '<option value="">Tanlang</option>' +
+            departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    } catch (error) {
+        console.error('Error loading departments:', error);
+    }
+}
+
+function renderEmployeesTable() {
+    const tbody = document.getElementById('employeesTableBody');
+    const emptyState = document.getElementById('emptyState');
+
+    if (employees.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+
+    tbody.innerHTML = employees.map(emp => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4">
+                <input type="checkbox" class="rounded employee-checkbox" value="${emp.id}">
+            </td>
+            <td class="px-6 py-4">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mr-3">
+                        <span class="text-white font-bold text-sm">${emp.full_name.charAt(0)}</span>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-800">${emp.full_name}</p>
+                        <p class="text-xs text-gray-500">ID: ${emp.employee_no}</p>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                <span class="badge badge-info">${emp.branch_name || 'N/A'}</span>
+            </td>
+            <td class="px-6 py-4">
+                <span class="badge badge-secondary">${emp.department_name || 'N/A'}</span>
+            </td>
+            <td class="px-6 py-4 text-gray-600">${emp.position || '-'}</td>
+            <td class="px-6 py-4 text-gray-600">${emp.phone || '-'}</td>
+            <td class="px-6 py-4">
+                <div>
+                    <p class="font-medium text-gray-800">${emp.salary ? formatCurrency(emp.salary) : '-'}</p>
+                    <p class="text-xs text-gray-500">${emp.salary_type === 'monthly' ? 'Oylik' : 'Kunlik'}</p>
+                </div>
+            </td>
+            <td class="px-6 py-4 text-gray-600 text-sm">
+                ${formatTime(emp.work_start_time)} - ${formatTime(emp.work_end_time)}
+            </td>
+            <td class="px-6 py-4">
+                ${getStatusBadge(emp.status)}
+            </td>
+            <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                    <button onclick="viewEmployee('${emp.id}')" class="text-blue-600 hover:text-blue-800" title="Ko'rish">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button onclick="editEmployee('${emp.id}')" class="text-green-600 hover:text-green-800" title="Tahrirlash">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="openDeleteModal('${emp.id}')" class="text-red-600 hover:text-red-800" title="O'chirish">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        active: '<span class="badge badge-success">Faol</span>',
+        inactive: '<span class="badge badge-secondary">Nofaol</span>',
+        suspended: '<span class="badge badge-danger">To\'xtatilgan</span>'
+    };
+    return badges[status] || badges.active;
+}
+
+function updateStats() {
+    const total = employees.length;
+    const active = employees.filter(e => e.status === 'active').length;
+    const inactive = employees.filter(e => e.status === 'inactive').length;
+
+    const salaries = employees.filter(e => e.salary).map(e => e.salary);
+    const avgSalary = salaries.length > 0
+        ? salaries.reduce((sum, s) => sum + s, 0) / salaries.length
+        : 0;
+
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('activeCount').textContent = active;
+    document.getElementById('inactiveCount').textContent = inactive;
+    document.getElementById('avgSalary').textContent = formatCurrency(avgSalary);
+    document.getElementById('totalEmployees').textContent = total;
+}
+
+function renderPagination(pagination) {
+    if (!pagination) return;
+
+    const container = document.getElementById('paginationContainer');
+    const pages = [];
+
+    // Previous button
+    if (pagination.page > 1) {
+        pages.push(`<button onclick="changePage(${pagination.page - 1})" class="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+            <i class="fas fa-chevron-left"></i>
+        </button>`);
+    }
+
+    // Page numbers
+    for (let i = 1; i <= pagination.pages; i++) {
+        if (i === pagination.page) {
+            pages.push(`<button class="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium">${i}</button>`);
+        } else if (i === 1 || i === pagination.pages || (i >= pagination.page - 1 && i <= pagination.page + 1)) {
+            pages.push(`<button onclick="changePage(${i})" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">${i}</button>`);
+        } else if (i === pagination.page - 2 || i === pagination.page + 2) {
+            pages.push(`<span class="px-2">...</span>`);
+        }
+    }
+
+    // Next button
+    if (pagination.page < pagination.pages) {
+        pages.push(`<button onclick="changePage(${pagination.page + 1})" class="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+            <i class="fas fa-chevron-right"></i>
+        </button>`);
+    }
+
+    container.innerHTML = pages.join('');
+}
+
+function changePage(page) {
+    currentPage = page;
+    loadEmployees();
+}
+
+// Modal functions
+function openAddModal() {
+    document.getElementById('modalTitle').textContent = 'Yangi xodim qo\'shish';
+    document.getElementById('employeeForm').reset();
+    document.getElementById('employeeId').value = '';
+    document.getElementById('status').value = 'active';
+    document.getElementById('salaryType').value = 'monthly';
+    document.getElementById('employeeModal').classList.remove('hidden');
+}
+
+async function editEmployee(id) {
+    const employee = employees.find(e => e.id === id);
+    if (!employee) return;
+
+    document.getElementById('modalTitle').textContent = 'Xodimni tahrirlash';
+    document.getElementById('employeeId').value = employee.id;
+    document.getElementById('fullName').value = employee.full_name;
+    document.getElementById('employeeNo').value = employee.employee_no;
+    document.getElementById('email').value = employee.email || '';
+    document.getElementById('phone').value = employee.phone || '';
+    document.getElementById('cardNo').value = employee.card_no || '';
+    document.getElementById('status').value = employee.status;
+    document.getElementById('branchId').value = employee.branch_id || '';
+    document.getElementById('departmentId').value = employee.department_id || '';
+    document.getElementById('position').value = employee.position || '';
+    document.getElementById('hireDate').value = employee.hire_date || '';
+    document.getElementById('lunchBreak').value = employee.lunch_break_duration || 60;
+    document.getElementById('salaryType').value = employee.salary_type || 'monthly';
+    document.getElementById('salary').value = employee.salary || '';
+
+    // Load weekly schedule
+    try {
+        const scheduleResponse = await API.employees.getSchedule(id);
+        const scheduleData = scheduleResponse.schedule || [];
+
+        const dayMap = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+        // Reset all to default first
+        dayMap.forEach((day, index) => {
+            const startInput = document.getElementById(`${day}_start`);
+            const endInput = document.getElementById(`${day}_end`);
+            const offCheckbox = document.getElementById(`${day}_off`);
+
+            if (startInput) startInput.value = '09:00';
+            if (endInput) endInput.value = '18:00';
+            if (offCheckbox) {
+                offCheckbox.checked = (index >= 5); // Sat, Sun off by default
+                toggleDayOff(day);
+            }
+        });
+
+        // Load actual schedule
+        scheduleData.forEach(daySchedule => {
+            const dayIndex = daySchedule.day_of_week - 1; // 1-7 to 0-6
+            if (dayIndex < 0 || dayIndex > 6) return;
+
+            const day = dayMap[dayIndex];
+            const startInput = document.getElementById(`${day}_start`);
+            const endInput = document.getElementById(`${day}_end`);
+            const offCheckbox = document.getElementById(`${day}_off`);
+
+            if (offCheckbox) {
+                offCheckbox.checked = daySchedule.is_day_off;
+                toggleDayOff(day);
+            }
+
+            if (!daySchedule.is_day_off && startInput && endInput) {
+                if (daySchedule.work_start_time) {
+                    startInput.value = daySchedule.work_start_time.substring(0, 5);
+                }
+                if (daySchedule.work_end_time) {
+                    endInput.value = daySchedule.work_end_time.substring(0, 5);
+                }
+            }
+        });
+
+        console.log('✅ Schedule loaded for edit');
+    } catch (error) {
+        console.error('Error loading schedule:', error);
+        // Use default schedule if error
+    }
+
+    document.getElementById('employeeModal').classList.remove('hidden');
+}
+
+async function viewEmployee(id) {
+    showLoading();
+
+    try {
+        const employee = await API.employees.get(id);
+
+        // Get today's date range
+        const today = new Date().toISOString().split('T')[0];
+
+        // Load additional data
+        const [attendanceData, penaltiesData, bonusesData] = await Promise.all([
+            API.attendance.list({ employee_id: id, start_date: today, end_date: today }),
+            API.penalties.getSummary(id, { start_date: today, end_date: today }),
+            API.bonuses.getSummary(id, { start_date: today, end_date: today })
+        ]);
+
+        document.getElementById('detailEmployeeNo').textContent = `ID: ${employee.employee_no}`;
+
+        document.getElementById('employeeDetailContent').innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Personal Info -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Shaxsiy ma'lumotlar</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">F.I.O.:</span>
+                            <span class="font-medium text-gray-800">${employee.full_name}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Email:</span>
+                            <span class="font-medium text-gray-800">${employee.email || '-'}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Telefon:</span>
+                            <span class="font-medium text-gray-800">${employee.phone || '-'}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Karta:</span>
+                            <span class="font-medium text-gray-800">${employee.card_no || '-'}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Holat:</span>
+                            <span>${getStatusBadge(employee.status)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Work Info -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Ish ma'lumotlari</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Filial:</span>
+                            <span class="font-medium text-gray-800">${employee.branch_name || '-'}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Bo'lim:</span>
+                            <span class="font-medium text-gray-800">${employee.department_name || '-'}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Lavozim:</span>
+                            <span class="font-medium text-gray-800">${employee.position || '-'}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Ish vaqti:</span>
+                            <span class="font-medium text-gray-800">${formatTime(employee.work_start_time)} - ${formatTime(employee.work_end_time)}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Oylik:</span>
+                            <span class="font-medium text-gray-800">${employee.salary ? formatCurrency(employee.salary) : '-'} (${employee.salary_type === 'monthly' ? 'Oylik' : 'Kunlik'})</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-3 gap-4 mt-8">
+                <div class="stat-card p-4 text-center">
+                    <p class="text-sm text-gray-500 mb-1">Jami jarimalar</p>
+                    <p class="text-2xl font-bold text-red-600">${penaltiesData.total_penalties || 0}</p>
+                    <p class="text-xs text-gray-500 mt-1">${formatCurrency(penaltiesData.total_amount || 0)}</p>
+                </div>
+                <div class="stat-card p-4 text-center">
+                    <p class="text-sm text-gray-500 mb-1">Jami bonuslar</p>
+                    <p class="text-2xl font-bold text-green-600">${bonusesData.total_bonuses || 0}</p>
+                    <p class="text-xs text-gray-500 mt-1">${formatCurrency(bonusesData.total_amount || 0)}</p>
+                </div>
+                <div class="stat-card p-4 text-center">
+                    <p class="text-sm text-gray-500 mb-1">Bugun</p>
+                    <p class="text-2xl font-bold text-blue-600">${attendanceData.employees && attendanceData.employees.length > 0 ? 'Ishda' : 'Yo\'q'}</p>
+                    <p class="text-xs text-gray-500 mt-1">${attendanceData.employees && attendanceData.employees[0] ? formatTime(attendanceData.employees[0].check_in_time) : '-'}</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-3 mt-8 pt-6 border-t border-gray-200">
+                <button onclick="window.location.href='/salary?employee_id=${employee.id}'" class="flex-1 btn-primary">
+                    <i class="fas fa-calculator mr-2"></i>
+                    Oylik hisoblash
+                </button>
+                <button onclick="editEmployee('${employee.id}'); closeDetailModal();" class="flex-1 btn-secondary">
+                    <i class="fas fa-edit mr-2"></i>
+                    Tahrirlash
+                </button>
+            </div>
+        `;
+
+        document.getElementById('employeeDetailModal').classList.remove('hidden');
+
+    } catch (error) {
+        console.error('Error viewing employee:', error);
+        showNotification('Ma\'lumotlarni yuklashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function closeEmployeeModal() {
+    document.getElementById('employeeModal').classList.add('hidden');
+}
+
+function closeDetailModal() {
+    document.getElementById('employeeDetailModal').classList.add('hidden');
+}
+
+function openDeleteModal(id) {
+    deleteEmployeeId = id;
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+
+function closeDeleteModal() {
+    deleteEmployeeId = null;
+    document.getElementById('deleteModal').classList.add('hidden');
+}
+
+async function confirmDelete() {
+    if (!deleteEmployeeId) return;
+
+    showLoading();
+
+    try {
+        await API.employees.delete(deleteEmployeeId);
+        showNotification('Xodim muvaffaqiyatli o\'chirildi', 'success');
+        closeDeleteModal();
+        loadEmployees();
+    } catch (error) {
+        console.error('Error deleting employee:', error);
+        showNotification('Xodimni o\'chirishda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Form submit
+document.getElementById('employeeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const employeeId = document.getElementById('employeeId').value;
+
+    // Collect weekly schedule
+    const weekDays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    const schedule = weekDays.map((day, index) => {
+        const isDayOff = document.getElementById(`${day}_off`).checked;
+        const startTime = document.getElementById(`${day}_start`).value;
+        const endTime = document.getElementById(`${day}_end`).value;
+
+        return {
+            day_of_week: index + 1, // 1=Monday, 7=Sunday
+            is_day_off: isDayOff,
+            work_start_time: isDayOff ? null : startTime,
+            work_end_time: isDayOff ? null : endTime
+        };
+    });
+
+    // Use first non-off day for main work times
+    const firstWorkDay = schedule.find(s => !s.is_day_off);
+
+    const employeeData = {
+        employee_no: document.getElementById('employeeNo').value,
+        full_name: document.getElementById('fullName').value,
+        email: document.getElementById('email').value || null,
+        phone: document.getElementById('phone').value || null,
+        card_no: document.getElementById('cardNo').value || null,
+        status: document.getElementById('status').value,
+        branch_id: document.getElementById('branchId').value || null,
+        department_id: document.getElementById('departmentId').value || null,
+        position: document.getElementById('position').value || null,
+        hire_date: document.getElementById('hireDate').value || null,
+        work_start_time: firstWorkDay ? (firstWorkDay.work_start_time + ':00') : '09:00:00',
+        work_end_time: firstWorkDay ? (firstWorkDay.work_end_time + ':00') : '18:00:00',
+        lunch_break_duration: parseInt(document.getElementById('lunchBreak').value),
+        salary_type: document.getElementById('salaryType').value,
+        salary: parseFloat(document.getElementById('salary').value) || null
+    };
+
+    console.log('Saving employee:', employeeData);
+    console.log('Schedule to save:', schedule);
+
+    showLoading();
+
+    try {
+        let savedEmployee;
+
+        if (employeeId) {
+            // Update employee
+            savedEmployee = await API.employees.update(employeeId, employeeData);
+
+            // Update schedule separately
+            await API.employees.setSchedule(employeeId, { schedule: schedule });
+
+            showNotification('Xodim va jadval muvaffaqiyatli yangilandi', 'success');
+        } else {
+            // Create employee
+            const response = await API.employees.create(employeeData);
+            savedEmployee = response.employee || response;
+
+            console.log('Employee created:', savedEmployee);
+
+            // Set schedule for new employee
+            if (savedEmployee.id) {
+                await API.employees.setSchedule(savedEmployee.id, { schedule: schedule });
+                console.log('✅ Schedule set for new employee');
+            }
+
+            showNotification('Xodim va jadval muvaffaqiyatli qo\'shildi', 'success');
+        }
+
+        closeEmployeeModal();
+        loadEmployees();
+    } catch (error) {
+        console.error('Error saving employee:', error);
+        showNotification(error.response?.data?.message || 'Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
+// Search and filters
+document.getElementById('searchInput').addEventListener('input', debounce(() => {
+    currentPage = 1;
+    loadEmployees();
+}, 500));
+
+document.getElementById('branchFilter').addEventListener('change', () => {
+    currentPage = 1;
+    loadEmployees();
+});
+
+document.getElementById('departmentFilter').addEventListener('change', () => {
+    currentPage = 1;
+    loadEmployees();
+});
+
+document.getElementById('statusFilter').addEventListener('change', () => {
+    currentPage = 1;
+    loadEmployees();
+});
+
+// Debounce helper
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Export function
+async function exportEmployees() {
+    try {
+        // Get current filters
+        const params = {};
+
+        const branchFilter = document.getElementById('branchFilter').value;
+        const departmentFilter = document.getElementById('departmentFilter').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+
+        if (branchFilter) params.branch_id = branchFilter;
+        if (departmentFilter) params.department_id = departmentFilter;
+        if (statusFilter) params.status = statusFilter;
+
+        showNotification('Excel fayl yuklanmoqda...', 'info');
+
+        // Trigger download (now async)
+        await API.export.employees(params);
+
+        // Success message
+        showNotification('Excel fayl muvaffaqiyatli yuklandi!', 'success');
+
+    } catch (error) {
+        console.error('Export error:', error);
+        showNotification('Excel eksport qilishda xatolik', 'error');
+    }
+}
+
+// Schedule modal (placeholder)
+function openScheduleModal(id) {
+    window.location.href = `/employees/${id}/schedule`;
+}
+
+// Time input mask (HH:MM format)
+function setupTimeInputs() {
+    const timeInputs = document.querySelectorAll('input[pattern="[0-2][0-9]:[0-5][0-9]"]');
+
+    timeInputs.forEach(input => {
+        input.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^0-9]/g, '');
+
+            if (value.length >= 2) {
+                value = value.substring(0, 2) + ':' + value.substring(2, 4);
+            }
+
+            e.target.value = value.substring(0, 5);
+        });
+
+        input.addEventListener('blur', function(e) {
+            let value = e.target.value;
+
+            // Validate and format
+            if (value.length === 5) {
+                const parts = value.split(':');
+                let hours = parseInt(parts[0]);
+                let minutes = parseInt(parts[1]);
+
+                // Validate
+                if (hours > 23) hours = 23;
+                if (minutes > 59) minutes = 59;
+
+                e.target.value = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+            }
+        });
+    });
+}
+
+// Toggle day off - disable/enable time inputs
+function toggleDayOff(day) {
+    const isOff = document.getElementById(`${day}_off`).checked;
+    const startInput = document.getElementById(`${day}_start`);
+    const endInput = document.getElementById(`${day}_end`);
+
+    startInput.disabled = isOff;
+    endInput.disabled = isOff;
+
+    if (isOff) {
+        startInput.style.backgroundColor = '#f3f4f6';
+        endInput.style.backgroundColor = '#f3f4f6';
+    } else {
+        startInput.style.backgroundColor = '';
+        endInput.style.backgroundColor = '';
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadBranches();
+    loadDepartments();
+    loadEmployees();
+    setupTimeInputs();
+});
+</script>
+{% endblock %}

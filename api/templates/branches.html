@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Filiallar - Davomat Tizimi{% endblock %}
+{% block page_title %}Filiallar{% endblock %}
+{% block page_subtitle %}Filiallarni boshqarish{% endblock %}
+
+{% block content %}
+<!-- Actions -->
+<div class="mb-6 flex justify-between items-center">
+    <div class="flex gap-3">
+        <button onclick="openAddBranchModal()" class="btn-primary">
+            <i class="fas fa-plus mr-2"></i>
+            Filial qo'shish
+        </button>
+    </div>
+    <div class="relative">
+        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+        <input type="text" id="searchInput" placeholder="Qidirish..." class="form-input pl-10">
+    </div>
+</div>
+
+<!-- Branches Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="branchesGrid">
+    <!-- Filled by JS -->
+</div>
+
+<!-- Add/Edit Branch Modal -->
+<div id="branchModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4">
+        <div class="border-b border-gray-200 px-8 py-6">
+            <h2 class="text-2xl font-bold text-gray-800" id="modalTitle">Filial qo'shish</h2>
+        </div>
+        
+        <form id="branchForm" class="p-8">
+            <input type="hidden" id="branchId">
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="form-label">Nomi <span class="text-red-500">*</span></label>
+                    <input type="text" id="branchName" required class="form-input" placeholder="Markaziy filial">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label">Telefon</label>
+                        <input type="tel" id="branchPhone" class="form-input" placeholder="+998 90 123 45 67">
+                    </div>
+                    <div>
+                        <label class="form-label">Email</label>
+                        <input type="email" id="branchEmail" class="form-input" placeholder="branch@company.com">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="form-label">Manzil</label>
+                    <textarea id="branchAddress" class="form-input" rows="2" placeholder="Toshkent shahar..."></textarea>
+                </div>
+                
+                <div>
+                    <label class="form-label">Holat</label>
+                    <select id="branchStatus" class="form-input">
+                        <option value="active">Faol</option>
+                        <option value="inactive">Nofaol</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-end gap-3 mt-8">
+                <button type="button" onclick="closeBranchModal()" class="btn-secondary">
+                    Bekor qilish
+                </button>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save mr-2"></i>
+                    Saqlash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let branches = [];
+
+async function loadBranches() {
+    showLoading();
+    
+    try {
+        const response = await API.branches.list({ per_page: 100 });
+        branches = response.branches || [];
+        
+        renderBranches();
+    } catch (error) {
+        console.error('Error loading branches:', error);
+        showNotification('Filiallarni yuklashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function renderBranches() {
+    const grid = document.getElementById('branchesGrid');
+    
+    if (branches.length === 0) {
+        grid.innerHTML = `
+            <div class="col-span-3 text-center py-12">
+                <i class="fas fa-building text-gray-300 text-6xl mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">Filiallar mavjud emas</h3>
+                <p class="text-gray-500">Yangi filial qo'shish uchun yuqoridagi tugmani bosing</p>
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = branches.map(branch => `
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition">
+            <div class="flex items-start justify-between mb-4">
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-building text-white text-xl"></i>
+                </div>
+                <span class="badge ${branch.status === 'active' ? 'badge-success' : 'badge-secondary'}">
+                    ${branch.status === 'active' ? 'Faol' : 'Nofaol'}
+                </span>
+            </div>
+            
+            <h3 class="text-lg font-bold text-gray-800 mb-2">${branch.name}</h3>
+            
+            <div class="space-y-2 text-sm text-gray-600 mb-4">
+                ${branch.phone ? `
+                    <div class="flex items-center">
+                        <i class="fas fa-phone w-4 mr-2"></i>
+                        <span>${branch.phone}</span>
+                    </div>
+                ` : ''}
+                ${branch.email ? `
+                    <div class="flex items-center">
+                        <i class="fas fa-envelope w-4 mr-2"></i>
+                        <span>${branch.email}</span>
+                    </div>
+                ` : ''}
+                ${branch.address ? `
+                    <div class="flex items-center">
+                        <i class="fas fa-map-marker-alt w-4 mr-2"></i>
+                        <span class="truncate">${branch.address}</span>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div class="pt-4 border-t border-gray-200 flex items-center justify-between">
+                <div class="text-sm text-gray-500">
+                    <i class="fas fa-users mr-1"></i>
+                    ${branch.employee_count || 0} xodim
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="editBranch('${branch.id}')" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteBranch('${branch.id}')" class="text-red-600 hover:text-red-800">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openAddBranchModal() {
+    document.getElementById('modalTitle').textContent = 'Filial qo\'shish';
+    document.getElementById('branchForm').reset();
+    document.getElementById('branchId').value = '';
+    document.getElementById('branchModal').classList.remove('hidden');
+}
+
+function closeBranchModal() {
+    document.getElementById('branchModal').classList.add('hidden');
+}
+
+async function editBranch(id) {
+    showLoading();
+    
+    try {
+        const branch = await API.branches.get(id);
+        
+        document.getElementById('modalTitle').textContent = 'Filialni tahrirlash';
+        document.getElementById('branchId').value = branch.id;
+        document.getElementById('branchName').value = branch.name;
+        document.getElementById('branchPhone').value = branch.phone || '';
+        document.getElementById('branchEmail').value = branch.email || '';
+        document.getElementById('branchAddress').value = branch.address || '';
+        document.getElementById('branchStatus').value = branch.status;
+        
+        document.getElementById('branchModal').classList.remove('hidden');
+    } catch (error) {
+        console.error('Error loading branch:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+document.getElementById('branchForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const id = document.getElementById('branchId').value;
+    const data = {
+        name: document.getElementById('branchName').value,
+        phone: document.getElementById('branchPhone').value,
+        email: document.getElementById('branchEmail').value,
+        address: document.getElementById('branchAddress').value,
+        status: document.getElementById('branchStatus').value
+    };
+    
+    showLoading();
+    
+    try {
+        if (id) {
+            await API.branches.update(id, data);
+            showNotification('Filial yangilandi', 'success');
+        } else {
+            await API.branches.create(data);
+            showNotification('Filial qo\'shildi', 'success');
+        }
+        
+        closeBranchModal();
+        loadBranches();
+    } catch (error) {
+        console.error('Error saving branch:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
+async function deleteBranch(id) {
+    if (!confirm('Filialni o\'chirmoqchimisiz?')) return;
+    
+    showLoading();
+    
+    try {
+        await API.branches.delete(id);
+        showNotification('Filial o\'chirildi', 'success');
+        loadBranches();
+    } catch (error) {
+        console.error('Error deleting branch:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Search
+document.getElementById('searchInput').addEventListener('input', (e) => {
+    const search = e.target.value.toLowerCase();
+    const filtered = branches.filter(b => 
+        b.name.toLowerCase().includes(search) ||
+        (b.phone && b.phone.includes(search)) ||
+        (b.address && b.address.toLowerCase().includes(search))
+    );
+    
+    branches = filtered;
+    renderBranches();
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadBranches();
+});
+</script>
+{% endblock %}

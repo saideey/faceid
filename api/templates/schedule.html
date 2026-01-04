@@ -1,0 +1,721 @@
+{% extends "base.html" %}
+
+{% block title %}Ish jadvali - Davomat Tizimi{% endblock %}
+{% block page_title %}Ish jadvali{% endblock %}
+{% block page_subtitle %}Xodimlarning haftalik ish jadvali{% endblock %}
+
+{% block content %}
+<!-- Employee Selector -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+            <label class="form-label">Xodim tanlang</label>
+            <select id="employeeSelect" class="form-input">
+                <option value="">Tanlang...</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label">Filial</label>
+            <select id="branchFilter" class="form-input">
+                <option value="">Barcha filiallar</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label">Bo'lim</label>
+            <select id="departmentFilter" class="form-input">
+                <option value="">Barcha bo'limlar</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Employee Info Card -->
+<div id="employeeInfo" class="hidden bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 mb-6 text-white">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center">
+            <div class="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
+                <i class="fas fa-user text-3xl"></i>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold" id="employeeName">-</h2>
+                <p class="opacity-90" id="employeeDetails">-</p>
+            </div>
+        </div>
+        <div class="text-right">
+            <button onclick="copyScheduleModal()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition">
+                <i class="fas fa-copy mr-2"></i>
+                Jadval nusxalash
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Weekly Schedule -->
+<div id="scheduleContainer" class="hidden">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+        <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800">Haftalik ish jadvali</h3>
+                <p class="text-sm text-gray-500 mt-1">Har bir kun uchun ish vaqtini belgilang</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="setAllDays()" class="btn-secondary">
+                    <i class="fas fa-calendar-week mr-2"></i>
+                    Barcha kunlar uchun
+                </button>
+                <button onclick="saveSchedule()" class="btn-primary">
+                    <i class="fas fa-save mr-2"></i>
+                    Saqlash
+                </button>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <!-- Monday -->
+            <div class="schedule-day mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="monday_enabled" class="rounded mr-3" onchange="toggleDay('monday')">
+                        <label class="text-lg font-semibold text-gray-800">Dushanba</label>
+                    </div>
+                    <span class="badge badge-info" id="monday_hours">-</span>
+                </div>
+                <div id="monday_inputs" class="hidden grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="form-label">Boshlanish</label>
+                        <input type="time" id="monday_start" class="form-input" value="09:00" onchange="updateHours('monday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tugash</label>
+                        <input type="time" id="monday_end" class="form-input" value="18:00" onchange="updateHours('monday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tushlik (daqiqa)</label>
+                        <input type="number" id="monday_lunch" class="form-input" value="60" min="0" max="120" onchange="updateHours('monday')">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tuesday -->
+            <div class="schedule-day mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="tuesday_enabled" class="rounded mr-3" onchange="toggleDay('tuesday')">
+                        <label class="text-lg font-semibold text-gray-800">Seshanba</label>
+                    </div>
+                    <span class="badge badge-info" id="tuesday_hours">-</span>
+                </div>
+                <div id="tuesday_inputs" class="hidden grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="form-label">Boshlanish</label>
+                        <input type="time" id="tuesday_start" class="form-input" value="09:00" onchange="updateHours('tuesday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tugash</label>
+                        <input type="time" id="tuesday_end" class="form-input" value="18:00" onchange="updateHours('tuesday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tushlik (daqiqa)</label>
+                        <input type="number" id="tuesday_lunch" class="form-input" value="60" min="0" max="120" onchange="updateHours('tuesday')">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wednesday -->
+            <div class="schedule-day mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="wednesday_enabled" class="rounded mr-3" onchange="toggleDay('wednesday')">
+                        <label class="text-lg font-semibold text-gray-800">Chorshanba</label>
+                    </div>
+                    <span class="badge badge-info" id="wednesday_hours">-</span>
+                </div>
+                <div id="wednesday_inputs" class="hidden grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="form-label">Boshlanish</label>
+                        <input type="time" id="wednesday_start" class="form-input" value="09:00" onchange="updateHours('wednesday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tugash</label>
+                        <input type="time" id="wednesday_end" class="form-input" value="18:00" onchange="updateHours('wednesday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tushlik (daqiqa)</label>
+                        <input type="number" id="wednesday_lunch" class="form-input" value="60" min="0" max="120" onchange="updateHours('wednesday')">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thursday -->
+            <div class="schedule-day mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="thursday_enabled" class="rounded mr-3" onchange="toggleDay('thursday')">
+                        <label class="text-lg font-semibold text-gray-800">Payshanba</label>
+                    </div>
+                    <span class="badge badge-info" id="thursday_hours">-</span>
+                </div>
+                <div id="thursday_inputs" class="hidden grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="form-label">Boshlanish</label>
+                        <input type="time" id="thursday_start" class="form-input" value="09:00" onchange="updateHours('thursday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tugash</label>
+                        <input type="time" id="thursday_end" class="form-input" value="18:00" onchange="updateHours('thursday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tushlik (daqiqa)</label>
+                        <input type="number" id="thursday_lunch" class="form-input" value="60" min="0" max="120" onchange="updateHours('thursday')">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Friday -->
+            <div class="schedule-day mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="friday_enabled" class="rounded mr-3" onchange="toggleDay('friday')">
+                        <label class="text-lg font-semibold text-gray-800">Juma</label>
+                    </div>
+                    <span class="badge badge-info" id="friday_hours">-</span>
+                </div>
+                <div id="friday_inputs" class="hidden grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="form-label">Boshlanish</label>
+                        <input type="time" id="friday_start" class="form-input" value="09:00" onchange="updateHours('friday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tugash</label>
+                        <input type="time" id="friday_end" class="form-input" value="18:00" onchange="updateHours('friday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tushlik (daqiqa)</label>
+                        <input type="number" id="friday_lunch" class="form-input" value="60" min="0" max="120" onchange="updateHours('friday')">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Saturday -->
+            <div class="schedule-day mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="saturday_enabled" class="rounded mr-3" onchange="toggleDay('saturday')">
+                        <label class="text-lg font-semibold text-gray-800">Shanba</label>
+                    </div>
+                    <span class="badge badge-info" id="saturday_hours">-</span>
+                </div>
+                <div id="saturday_inputs" class="hidden grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="form-label">Boshlanish</label>
+                        <input type="time" id="saturday_start" class="form-input" value="09:00" onchange="updateHours('saturday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tugash</label>
+                        <input type="time" id="saturday_end" class="form-input" value="18:00" onchange="updateHours('saturday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tushlik (daqiqa)</label>
+                        <input type="number" id="saturday_lunch" class="form-input" value="60" min="0" max="120" onchange="updateHours('saturday')">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sunday -->
+            <div class="schedule-day">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="sunday_enabled" class="rounded mr-3" onchange="toggleDay('sunday')">
+                        <label class="text-lg font-semibold text-gray-800">Yakshanba</label>
+                    </div>
+                    <span class="badge badge-info" id="sunday_hours">-</span>
+                </div>
+                <div id="sunday_inputs" class="hidden grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="form-label">Boshlanish</label>
+                        <input type="time" id="sunday_start" class="form-input" value="09:00" onchange="updateHours('sunday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tugash</label>
+                        <input type="time" id="sunday_end" class="form-input" value="18:00" onchange="updateHours('sunday')">
+                    </div>
+                    <div>
+                        <label class="form-label">Tushlik (daqiqa)</label>
+                        <input type="number" id="sunday_lunch" class="form-input" value="60" min="0" max="120" onchange="updateHours('sunday')">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Weekly Summary -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Haftalik xulosa</h3>
+        <div class="grid grid-cols-3 gap-6">
+            <div class="text-center p-4 bg-blue-50 rounded-lg">
+                <p class="text-sm text-gray-600 mb-2">Ish kunlari</p>
+                <p class="text-3xl font-bold text-blue-600" id="totalWorkDays">0</p>
+            </div>
+            <div class="text-center p-4 bg-green-50 rounded-lg">
+                <p class="text-sm text-gray-600 mb-2">Jami soat</p>
+                <p class="text-3xl font-bold text-green-600" id="totalWorkHours">0</p>
+            </div>
+            <div class="text-center p-4 bg-purple-50 rounded-lg">
+                <p class="text-sm text-gray-600 mb-2">Dam olish</p>
+                <p class="text-3xl font-bold text-purple-600" id="totalOffDays">0</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Set All Days Modal -->
+<div id="setAllDaysModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4">
+        <div class="border-b border-gray-200 px-8 py-6">
+            <h2 class="text-2xl font-bold text-gray-800">Barcha kunlar uchun</h2>
+            <p class="text-sm text-gray-500 mt-1">Bir xil vaqtni barcha ish kunlariga qo'llash</p>
+        </div>
+        
+        <div class="p-8">
+            <div class="grid grid-cols-1 gap-4 mb-6">
+                <div>
+                    <label class="form-label">Boshlanish vaqti</label>
+                    <input type="time" id="allDaysStart" class="form-input" value="09:00">
+                </div>
+                <div>
+                    <label class="form-label">Tugash vaqti</label>
+                    <input type="time" id="allDaysEnd" class="form-input" value="18:00">
+                </div>
+                <div>
+                    <label class="form-label">Tushlik (daqiqa)</label>
+                    <input type="number" id="allDaysLunch" class="form-input" value="60" min="0" max="120">
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <label class="form-label">Qaysi kunlarga qo'llash?</label>
+                <div class="space-y-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" class="rounded mr-2 all-days-checkbox" value="monday" checked>
+                        <span>Dushanba</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" class="rounded mr-2 all-days-checkbox" value="tuesday" checked>
+                        <span>Seshanba</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" class="rounded mr-2 all-days-checkbox" value="wednesday" checked>
+                        <span>Chorshanba</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" class="rounded mr-2 all-days-checkbox" value="thursday" checked>
+                        <span>Payshanba</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" class="rounded mr-2 all-days-checkbox" value="friday" checked>
+                        <span>Juma</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" class="rounded mr-2 all-days-checkbox" value="saturday">
+                        <span>Shanba</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" class="rounded mr-2 all-days-checkbox" value="sunday">
+                        <span>Yakshanba</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-end gap-3">
+                <button onclick="closeSetAllDaysModal()" class="btn-secondary">
+                    Bekor qilish
+                </button>
+                <button onclick="applyToAllDays()" class="btn-primary">
+                    <i class="fas fa-check mr-2"></i>
+                    Qo'llash
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Copy Schedule Modal -->
+<div id="copyScheduleModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4">
+        <div class="border-b border-gray-200 px-8 py-6">
+            <h2 class="text-2xl font-bold text-gray-800">Jadval nusxalash</h2>
+            <p class="text-sm text-gray-500 mt-1">Boshqa xodimdan jadval nusxalash</p>
+        </div>
+        
+        <div class="p-8">
+            <div class="mb-6">
+                <label class="form-label">Qaysi xodimdan nusxalash?</label>
+                <select id="copyFromEmployee" class="form-input">
+                    <option value="">Tanlang...</option>
+                </select>
+            </div>
+            
+            <div class="flex items-center justify-end gap-3">
+                <button onclick="closeCopyScheduleModal()" class="btn-secondary">
+                    Bekor qilish
+                </button>
+                <button onclick="applyCopySchedule()" class="btn-primary">
+                    <i class="fas fa-copy mr-2"></i>
+                    Nusxalash
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let employees = [];
+let currentEmployeeId = null;
+const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+// Load employees
+async function loadEmployees() {
+    try {
+        const response = await API.employees.list({ per_page: 1000, status: 'active' });
+        employees = response.employees || [];
+        
+        const select = document.getElementById('employeeSelect');
+        const copySelect = document.getElementById('copyFromEmployee');
+        
+        const options = employees.map(e => 
+            `<option value="${e.id}">${e.full_name} (${e.employee_no})</option>`
+        ).join('');
+        
+        select.innerHTML = '<option value="">Tanlang...</option>' + options;
+        copySelect.innerHTML = '<option value="">Tanlang...</option>' + options;
+    } catch (error) {
+        console.error('Error loading employees:', error);
+    }
+}
+
+// Load branches and departments (for filters)
+async function loadFilters() {
+    try {
+        const [branches, departments] = await Promise.all([
+            API.branches.list({ per_page: 100 }),
+            API.departments.list({ per_page: 100 })
+        ]);
+        
+        const branchSelect = document.getElementById('branchFilter');
+        const deptSelect = document.getElementById('departmentFilter');
+        
+        branchSelect.innerHTML = '<option value="">Barcha filiallar</option>' + 
+            branches.branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+        
+        deptSelect.innerHTML = '<option value="">Barcha bo\'limlar</option>' + 
+            departments.departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    } catch (error) {
+        console.error('Error loading filters:', error);
+    }
+}
+
+// Select employee
+document.getElementById('employeeSelect').addEventListener('change', async (e) => {
+    const employeeId = e.target.value;
+    
+    if (!employeeId) {
+        document.getElementById('employeeInfo').classList.add('hidden');
+        document.getElementById('scheduleContainer').classList.add('hidden');
+        return;
+    }
+    
+    currentEmployeeId = employeeId;
+    await loadEmployeeSchedule(employeeId);
+});
+
+// Load employee schedule
+async function loadEmployeeSchedule(employeeId) {
+    showLoading();
+    
+    try {
+        const [employee, schedule] = await Promise.all([
+            API.employees.get(employeeId),
+            API.employees.getSchedule(employeeId)
+        ]);
+        
+        // Show employee info
+        document.getElementById('employeeName').textContent = employee.full_name;
+        document.getElementById('employeeDetails').textContent = 
+            `${employee.employee_no} • ${employee.branch_name || 'N/A'} • ${employee.department_name || 'N/A'}`;
+        document.getElementById('employeeInfo').classList.remove('hidden');
+        document.getElementById('scheduleContainer').classList.remove('hidden');
+        
+        // Load schedule
+        if (schedule && schedule.schedule) {
+            loadScheduleData(schedule.schedule);
+        } else {
+            resetSchedule();
+        }
+        
+        updateSummary();
+        
+    } catch (error) {
+        console.error('Error loading employee schedule:', error);
+        showNotification('Jadval yuklashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Load schedule data into form
+function loadScheduleData(scheduleData) {
+    // Backend returns array, convert to object
+    const dayMapping = {
+        1: 'monday',
+        2: 'tuesday',
+        3: 'wednesday',
+        4: 'thursday',
+        5: 'friday',
+        6: 'saturday',
+        7: 'sunday'
+    };
+
+    // Convert array to object for easier access
+    const scheduleObj = {};
+    if (Array.isArray(scheduleData)) {
+        scheduleData.forEach(item => {
+            const dayName = dayMapping[item.day_of_week];
+            if (dayName) {
+                scheduleObj[dayName] = {
+                    is_day_off: item.is_day_off,
+                    start_time: item.work_start_time ? item.work_start_time.substring(0, 5) : '09:00',
+                    end_time: item.work_end_time ? item.work_end_time.substring(0, 5) : '18:00'
+                };
+            }
+        });
+    } else {
+        // If backend returns object format (backward compatibility)
+        Object.assign(scheduleObj, scheduleData);
+    }
+
+    dayNames.forEach(day => {
+        const daySchedule = scheduleObj[day];
+
+        if (daySchedule && !daySchedule.is_day_off) {
+            document.getElementById(`${day}_enabled`).checked = true;
+            document.getElementById(`${day}_start`).value = daySchedule.start_time || '09:00';
+            document.getElementById(`${day}_end`).value = daySchedule.end_time || '18:00';
+            document.getElementById(`${day}_lunch`).value = 60;
+            document.getElementById(`${day}_inputs`).classList.remove('hidden');
+            updateHours(day);
+        } else {
+            document.getElementById(`${day}_enabled`).checked = false;
+            document.getElementById(`${day}_inputs`).classList.add('hidden');
+            document.getElementById(`${day}_hours`).textContent = 'Dam olish';
+        }
+    });
+}
+
+// Reset schedule
+function resetSchedule() {
+    dayNames.forEach(day => {
+        document.getElementById(`${day}_enabled`).checked = false;
+        document.getElementById(`${day}_inputs`).classList.add('hidden');
+        document.getElementById(`${day}_hours`).textContent = '-';
+    });
+}
+
+// Toggle day
+function toggleDay(day) {
+    const enabled = document.getElementById(`${day}_enabled`).checked;
+    const inputs = document.getElementById(`${day}_inputs`);
+
+    if (enabled) {
+        inputs.classList.remove('hidden');
+        updateHours(day);
+    } else {
+        inputs.classList.add('hidden');
+        document.getElementById(`${day}_hours`).textContent = 'Dam olish';
+    }
+
+    updateSummary();
+}
+
+// Update hours display
+function updateHours(day) {
+    const start = document.getElementById(`${day}_start`).value;
+    const end = document.getElementById(`${day}_end`).value;
+    const lunch = parseInt(document.getElementById(`${day}_lunch`).value) || 0;
+
+    if (start && end) {
+        const startTime = new Date(`2000-01-01T${start}`);
+        const endTime = new Date(`2000-01-01T${end}`);
+
+        const totalMinutes = (endTime - startTime) / (1000 * 60);
+        const workMinutes = totalMinutes - lunch;
+        const hours = Math.floor(workMinutes / 60);
+        const minutes = workMinutes % 60;
+
+        document.getElementById(`${day}_hours`).textContent = `${hours}s ${minutes}d`;
+    }
+
+    updateSummary();
+}
+
+// Update summary
+function updateSummary() {
+    let workDays = 0;
+    let totalMinutes = 0;
+
+    dayNames.forEach(day => {
+        const enabled = document.getElementById(`${day}_enabled`).checked;
+
+        if (enabled) {
+            workDays++;
+
+            const start = document.getElementById(`${day}_start`).value;
+            const end = document.getElementById(`${day}_end`).value;
+            const lunch = parseInt(document.getElementById(`${day}_lunch`).value) || 0;
+
+            if (start && end) {
+                const startTime = new Date(`2000-01-01T${start}`);
+                const endTime = new Date(`2000-01-01T${end}`);
+                const dayMinutes = (endTime - startTime) / (1000 * 60) - lunch;
+                totalMinutes += dayMinutes;
+            }
+        }
+    });
+
+    const totalHours = Math.floor(totalMinutes / 60);
+    const offDays = 7 - workDays;
+
+    document.getElementById('totalWorkDays').textContent = workDays;
+    document.getElementById('totalWorkHours').textContent = totalHours;
+    document.getElementById('totalOffDays').textContent = offDays;
+}
+
+// Set all days modal
+function setAllDays() {
+    document.getElementById('setAllDaysModal').classList.remove('hidden');
+}
+
+function closeSetAllDaysModal() {
+    document.getElementById('setAllDaysModal').classList.add('hidden');
+}
+
+function applyToAllDays() {
+    const start = document.getElementById('allDaysStart').value;
+    const end = document.getElementById('allDaysEnd').value;
+    const lunch = document.getElementById('allDaysLunch').value;
+
+    const checkboxes = document.querySelectorAll('.all-days-checkbox:checked');
+
+    checkboxes.forEach(cb => {
+        const day = cb.value;
+        document.getElementById(`${day}_enabled`).checked = true;
+        document.getElementById(`${day}_start`).value = start;
+        document.getElementById(`${day}_end`).value = end;
+        document.getElementById(`${day}_lunch`).value = lunch;
+        document.getElementById(`${day}_inputs`).classList.remove('hidden');
+        updateHours(day);
+    });
+
+    updateSummary();
+    closeSetAllDaysModal();
+    showNotification('Jadval barcha kunlarga qo\'llandi', 'success');
+}
+
+// Copy schedule modal
+function copyScheduleModal() {
+    document.getElementById('copyScheduleModal').classList.remove('hidden');
+}
+
+function closeCopyScheduleModal() {
+    document.getElementById('copyScheduleModal').classList.add('hidden');
+}
+
+async function applyCopySchedule() {
+    const sourceEmployeeId = document.getElementById('copyFromEmployee').value;
+
+    if (!sourceEmployeeId) {
+        showNotification('Xodim tanlang', 'warning');
+        return;
+    }
+
+    showLoading();
+
+    try {
+        await API.employees.copySchedule(currentEmployeeId, sourceEmployeeId);
+
+        showNotification('Jadval nusxalandi', 'success');
+        closeCopyScheduleModal();
+
+        // Reload schedule
+        await loadEmployeeSchedule(currentEmployeeId);
+
+    } catch (error) {
+        console.error('Error copying schedule:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// CORRECT VERSION - Copy this function to replace lines 634-681
+
+// Save schedule
+async function saveSchedule() {
+    if (!currentEmployeeId) {
+        showNotification('Xodim tanlanmagan', 'warning');
+        return;
+    }
+
+    // Backend expects array format with day_of_week numbers
+    const scheduleArray = [];
+
+    const dayMapping = {
+        'monday': 1,
+        'tuesday': 2,
+        'wednesday': 3,
+        'thursday': 4,
+        'friday': 5,
+        'saturday': 6,
+        'sunday': 7
+    };
+
+    dayNames.forEach(day => {
+        const enabled = document.getElementById(`${day}_enabled`).checked;
+
+        const scheduleDay = {
+            day_of_week: dayMapping[day],
+            is_day_off: !enabled
+        };
+
+        if (enabled) {
+            scheduleDay.work_start_time = document.getElementById(`${day}_start`).value + ':00';
+            scheduleDay.work_end_time = document.getElementById(`${day}_end`).value + ':00';
+        }
+
+        scheduleArray.push(scheduleDay);
+    });
+
+    showLoading();
+
+    try {
+        await API.employees.setSchedule(currentEmployeeId, scheduleArray);
+        showNotification('Jadval saqlandi', 'success');
+        // FIXED: Use correct function name
+        await loadEmployeeSchedule(currentEmployeeId);
+    } catch (error) {
+        console.error('Error saving schedule:', error);
+        showNotification(error.response?.data?.message || 'Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadEmployees();
+    loadFilters();
+});
+</script>
+{% endblock %}

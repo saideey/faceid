@@ -1,0 +1,511 @@
+{% extends "base.html" %}
+
+{% block title %}Bosh sahifa - Davomat Tizimi{% endblock %}
+{% block page_title %}Bosh sahifa{% endblock %}
+{% block page_subtitle %}Umumiy ko'rsatkichlar va statistika{% endblock %}
+
+{% block content %}
+<!-- Top Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Total Employees -->
+    <div class="stat-card p-6">
+        <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-users text-blue-600 text-xl"></i>
+            </div>
+            <span class="text-xs text-gray-500 font-medium">+12% bu oy</span>
+        </div>
+        <h3 class="text-gray-500 text-sm font-medium">Jami xodimlar</h3>
+        <p class="text-3xl font-bold text-gray-800 mt-2" id="totalEmployees">0</p>
+        <div class="mt-4 flex items-center text-xs text-gray-600">
+            <span class="text-green-600 font-medium mr-1">
+                <i class="fas fa-arrow-up"></i>
+                <span id="activeEmployees">0</span>
+            </span>
+            Faol
+        </div>
+    </div>
+
+    <!-- Today Attendance -->
+    <div class="stat-card p-6">
+        <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-calendar-check text-green-600 text-xl"></i>
+            </div>
+            <span class="text-xs text-gray-500 font-medium" id="attendancePercent">0%</span>
+        </div>
+        <h3 class="text-gray-500 text-sm font-medium">Bugungi davomat</h3>
+        <p class="text-3xl font-bold text-gray-800 mt-2" id="todayAttendance">0</p>
+        <div class="progress-bar mt-4">
+            <div class="progress-fill" id="attendanceProgress" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- Late Today -->
+    <div class="stat-card p-6">
+        <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-clock text-yellow-600 text-xl"></i>
+            </div>
+            <span class="text-xs text-gray-500 font-medium">Bugun</span>
+        </div>
+        <h3 class="text-gray-500 text-sm font-medium">Kech qolganlar</h3>
+        <p class="text-3xl font-bold text-gray-800 mt-2" id="lateToday">0</p>
+        <div class="mt-4 text-xs text-gray-600">
+            O'rtacha: <span class="font-medium" id="avgLateMinutes">0</span> daqiqa
+        </div>
+    </div>
+
+    <!-- Monthly Penalties -->
+    <div class="stat-card p-6">
+        <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+            </div>
+            <span class="text-xs text-gray-500 font-medium">Bu oy</span>
+        </div>
+        <h3 class="text-gray-500 text-sm font-medium">Jami jarimalar</h3>
+        <p class="text-3xl font-bold text-gray-800 mt-2" id="totalPenalties">0</p>
+        <div class="mt-4 text-xs text-red-600 font-medium" id="penaltyAmount">0 so'm</div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- Attendance Trend Chart -->
+    <div class="chart-container">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Haftalik davomat dinamikasi</h3>
+        <canvas id="attendanceTrendChart"></canvas>
+    </div>
+
+    <!-- Branch Comparison Chart -->
+    <div class="chart-container">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Filiallar bo'yicha xodimlar</h3>
+        <canvas id="branchChart"></canvas>
+    </div>
+</div>
+
+<!-- Recent Activity and Top Performers -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <!-- Recent Check-ins -->
+    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-800">So'nggi kirishlar</h3>
+                <a href="/attendance" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    Barchasini ko'rish <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-3 text-left">Xodim</th>
+                        <th class="px-6 py-3 text-left">Filial</th>
+                        <th class="px-6 py-3 text-left">Kirish vaqti</th>
+                        <th class="px-6 py-3 text-left">Holat</th>
+                    </tr>
+                </thead>
+                <tbody id="recentCheckinsTable">
+                    <!-- Filled by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Top Performers -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">Eng yaxshi xodimlar</h3>
+            <p class="text-sm text-gray-500 mt-1">Bu oy</p>
+        </div>
+        <div class="p-6">
+            <div class="space-y-4" id="topPerformers">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Department Stats -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+    <div class="p-6 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-800">Bo'limlar statistikasi</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead>
+                <tr>
+                    <th class="px-6 py-3 text-left">Bo'lim</th>
+                    <th class="px-6 py-3 text-left">Xodimlar</th>
+                    <th class="px-6 py-3 text-left">Bugun ishda</th>
+                    <th class="px-6 py-3 text-left">Kech qolganlar</th>
+                    <th class="px-6 py-3 text-left">Davomat %</th>
+                    <th class="px-6 py-3 text-left">Jarimalar</th>
+                    <th class="px-6 py-3 text-left">Bonuslar</th>
+                </tr>
+            </thead>
+            <tbody id="departmentStatsTable">
+                <!-- Filled by JS -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <button onclick="window.location.href='/employees/add'" class="stat-card p-6 text-center hover:shadow-lg transition-all">
+        <i class="fas fa-user-plus text-4xl text-blue-600 mb-3"></i>
+        <h4 class="font-semibold text-gray-800">Xodim qo'shish</h4>
+    </button>
+
+    <button onclick="showBonusModal()" class="stat-card p-6 text-center hover:shadow-lg transition-all">
+        <i class="fas fa-gift text-4xl text-green-600 mb-3"></i>
+        <h4 class="font-semibold text-gray-800">Bonus berish</h4>
+    </button>
+
+    <button onclick="window.location.href='/reports'" class="stat-card p-6 text-center hover:shadow-lg transition-all">
+        <i class="fas fa-file-alt text-4xl text-purple-600 mb-3"></i>
+        <h4 class="font-semibold text-gray-800">Hisobot olish</h4>
+    </button>
+
+    <button onclick="window.location.href='/salary'" class="stat-card p-6 text-center hover:shadow-lg transition-all">
+        <i class="fas fa-calculator text-4xl text-orange-600 mb-3"></i>
+        <h4 class="font-semibold text-gray-800">Oylik hisoblash</h4>
+    </button>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let attendanceTrendChart = null;
+let branchChart = null;
+
+async function loadDashboardData() {
+    showLoading();
+
+    try {
+        // Get current month range
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        const startDate = firstDay.toISOString().split('T')[0];
+        const endDate = lastDay.toISOString().split('T')[0];
+        const today = now.toISOString().split('T')[0];
+
+        // Load all data
+        const [employees, attendance, penalties, bonuses, branches, departments] = await Promise.all([
+            API.employees.list({ per_page: 1000 }),
+            API.attendance.list({ start_date: today, end_date: today, per_page: 1000 }),
+            API.penalties.list({ start_date: startDate, end_date: endDate, per_page: 1000 }),
+            API.bonuses.list({ start_date: startDate, end_date: endDate, per_page: 1000 }),
+            API.branches.list({ per_page: 100 }),
+            API.departments.list({ per_page: 100 })
+        ]);
+
+        // Update top stats
+        updateTopStats(employees, attendance, penalties);
+
+        // Load charts
+        await loadAttendanceTrend();
+        loadBranchChart(branches, employees);
+
+        // Load tables
+        loadRecentCheckins(attendance.employees || []);
+        loadTopPerformers(employees.employees || []);
+        loadDepartmentStats(departments.departments || [], employees.employees || [], attendance, penalties, bonuses);
+
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        showNotification('Ma\'lumotlarni yuklashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function updateTopStats(employeesData, attendanceData, penaltiesData) {
+    const employees = employeesData.employees || [];
+    const activeEmployees = employees.filter(e => e.status === 'active');
+    const attendanceList = attendanceData.employees || [];
+    const penalties = penaltiesData.penalties || [];
+
+    // Total employees
+    document.getElementById('totalEmployees').textContent = employees.length;
+    document.getElementById('activeEmployees').textContent = activeEmployees.length;
+
+    // Today attendance
+    const todayCount = attendanceList.length;
+    const attendancePercent = activeEmployees.length > 0
+        ? Math.round((todayCount / activeEmployees.length) * 100)
+        : 0;
+
+    document.getElementById('todayAttendance').textContent = todayCount;
+    document.getElementById('attendancePercent').textContent = attendancePercent + '%';
+    document.getElementById('attendanceProgress').style.width = attendancePercent + '%';
+
+    // Late today
+    const lateCount = attendanceList.filter(a => a.late_minutes > 0).length;
+    const totalLateMinutes = attendanceList.reduce((sum, a) => sum + (a.late_minutes || 0), 0);
+    const avgLate = lateCount > 0 ? Math.round(totalLateMinutes / lateCount) : 0;
+
+    document.getElementById('lateToday').textContent = lateCount;
+    document.getElementById('avgLateMinutes').textContent = avgLate;
+
+    // Penalties
+    const activePenalties = penalties.filter(p => !p.is_waived && !p.is_excused);
+    const totalAmount = activePenalties.reduce((sum, p) => sum + p.amount, 0);
+
+    document.getElementById('totalPenalties').textContent = penalties.length;
+    document.getElementById('penaltyAmount').textContent = formatCurrency(totalAmount);
+}
+
+async function loadAttendanceTrend() {
+    const now = new Date();
+    const last7Days = [];
+    const attendanceCounts = [];
+    const lateCounts = [];
+
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+
+        last7Days.push(date.toLocaleDateString('uz-UZ', { weekday: 'short', day: 'numeric' }));
+
+        try {
+            const data = await API.attendance.list({ start_date: dateStr, end_date: dateStr, per_page: 1000 });
+            const list = data.employees || [];
+            attendanceCounts.push(list.length);
+            lateCounts.push(list.filter(a => a.late_minutes > 0).length);
+        } catch (error) {
+            attendanceCounts.push(0);
+            lateCounts.push(0);
+        }
+    }
+
+    const ctx = document.getElementById('attendanceTrendChart').getContext('2d');
+
+    if (attendanceTrendChart) {
+        attendanceTrendChart.destroy();
+    }
+
+    attendanceTrendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: last7Days,
+            datasets: [
+                {
+                    label: 'Ishda',
+                    data: attendanceCounts,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                },
+                {
+                    label: 'Kech qolgan',
+                    data: lateCounts,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+}
+
+function loadBranchChart(branchesData, employeesData) {
+    const branches = branchesData.branches || [];
+    const employees = employeesData.employees || [];
+
+    const branchNames = branches.map(b => b.name);
+    const branchCounts = branches.map(b =>
+        employees.filter(e => e.branch_id === b.id).length
+    );
+
+    const ctx = document.getElementById('branchChart').getContext('2d');
+
+    if (branchChart) {
+        branchChart.destroy();
+    }
+
+    branchChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: branchNames,
+            datasets: [{
+                data: branchCounts,
+                backgroundColor: [
+                    '#3b82f6',
+                    '#10b981',
+                    '#f59e0b',
+                    '#ef4444',
+                    '#8b5cf6',
+                    '#ec4899'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function loadRecentCheckins(attendanceList) {
+    const tbody = document.getElementById('recentCheckinsTable');
+    const recent = attendanceList.slice(0, 10);
+
+    if (recent.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">Hozircha ma\'lumot yo\'q</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = recent.map(a => `
+        <tr>
+            <td class="px-6 py-4">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                        <i class="fas fa-user text-gray-500"></i>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-800">${a.employee_name || 'N/A'}</p>
+                        <p class="text-xs text-gray-500">${a.employee_no}</p>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                <span class="badge badge-secondary">${a.branch_name || 'N/A'}</span>
+            </td>
+            <td class="px-6 py-4 text-gray-600">
+                ${formatTime(a.check_in_time ? new Date(a.check_in_time).toLocaleTimeString('uz-UZ') : null)}
+            </td>
+            <td class="px-6 py-4">
+                ${a.late_minutes > 0
+                    ? `<span class="badge badge-warning">${a.late_minutes} min kech</span>`
+                    : '<span class="badge badge-success">O\'z vaqtida</span>'
+                }
+            </td>
+        </tr>
+    `).join('');
+}
+
+function loadTopPerformers(employees) {
+    const container = document.getElementById('topPerformers');
+    const top5 = employees.slice(0, 5);
+
+    if (top5.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-sm text-center">Ma\'lumot yo\'q</p>';
+        return;
+    }
+
+    container.innerHTML = top5.map((emp, idx) => `
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    ${idx + 1}
+                </div>
+                <div>
+                    <p class="font-medium text-gray-800 text-sm">${emp.full_name}</p>
+                    <p class="text-xs text-gray-500">${emp.position || 'N/A'}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-xs text-green-600 font-medium">100%</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function loadDepartmentStats(departments, employees, attendanceData, penaltiesData, bonusesData) {
+    const tbody = document.getElementById('departmentStatsTable');
+    const today = new Date().toISOString().split('T')[0];
+
+    if (departments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-500">Bo\'limlar mavjud emas</td></tr>';
+        return;
+    }
+
+    const attendanceList = attendanceData.employees || [];
+    const penalties = penaltiesData.penalties || [];
+    const bonuses = bonusesData.bonuses || [];
+
+    tbody.innerHTML = departments.map(dept => {
+        const deptEmployees = employees.filter(e => e.department_id === dept.id);
+        const deptToday = attendanceList.filter(a =>
+            deptEmployees.some(e => e.id === a.employee_id)
+        );
+        const deptLate = deptToday.filter(a => a.late_minutes > 0);
+        const deptPenalties = penalties.filter(p =>
+            deptEmployees.some(e => e.id === p.employee_id)
+        );
+        const deptBonuses = bonuses.filter(b =>
+            deptEmployees.some(e => e.id === b.employee_id)
+        );
+
+        const attendancePercent = deptEmployees.length > 0
+            ? Math.round((deptToday.length / deptEmployees.length) * 100)
+            : 0;
+
+        const penaltyAmount = deptPenalties.reduce((sum, p) => sum + p.amount, 0);
+        const bonusAmount = deptBonuses.reduce((sum, b) => sum + b.amount, 0);
+
+        return `
+            <tr>
+                <td class="px-6 py-4 font-medium text-gray-800">${dept.name}</td>
+                <td class="px-6 py-4 text-gray-600">${deptEmployees.length}</td>
+                <td class="px-6 py-4 text-gray-600">${deptToday.length}</td>
+                <td class="px-6 py-4">
+                    ${deptLate.length > 0
+                        ? `<span class="badge badge-warning">${deptLate.length}</span>`
+                        : '<span class="text-gray-400">0</span>'
+                    }
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center space-x-2">
+                        <div class="progress-bar flex-1" style="height: 6px;">
+                            <div class="progress-fill" style="width: ${attendancePercent}%"></div>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700">${attendancePercent}%</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-red-600 font-medium">${formatCurrency(penaltyAmount)}</td>
+                <td class="px-6 py-4 text-green-600 font-medium">${formatCurrency(bonusAmount)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Load data on page load
+document.addEventListener('DOMContentLoaded', loadDashboardData);
+
+// Refresh every 5 minutes
+setInterval(loadDashboardData, 5 * 60 * 1000);
+</script>
+{% endblock %}

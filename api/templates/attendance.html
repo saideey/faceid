@@ -1,0 +1,968 @@
+{% extends "base.html" %}
+
+{% block title %}Davomat - Davomat Tizimi{% endblock %}
+{% block page_title %}Davomat{% endblock %}
+{% block page_subtitle %}Xodimlar davomati va vaqt hisobi{% endblock %}
+
+{% block content %}
+<!-- Date Selector and Filters -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div>
+            <label class="form-label">Sana</label>
+            <input type="date" id="selectedDate" class="form-input">
+        </div>
+
+        <div>
+            <label class="form-label">Filial</label>
+            <select id="branchFilter" class="form-input">
+                <option value="">Barcha filiallar</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="form-label">Bo'lim</label>
+            <select id="departmentFilter" class="form-input">
+                <option value="">Barcha bo'limlar</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="form-label">Holat</label>
+            <select id="statusFilter" class="form-input">
+                <option value="">Barchasi</option>
+                <option value="present">Ishda</option>
+                <option value="late">Kech qolgan</option>
+                <option value="absent">Yo'q</option>
+            </select>
+        </div>
+
+        <div class="flex items-end gap-2">
+            <button onclick="loadAttendance()" class="btn-primary flex-1">
+                <i class="fas fa-sync mr-2"></i>
+                Yangilash
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
+    <div class="stat-card p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium opacity-90">Jami xodimlar</h3>
+            <i class="fas fa-users text-2xl opacity-50"></i>
+        </div>
+        <p class="text-3xl font-bold" id="totalEmployees">0</p>
+    </div>
+
+    <div class="stat-card p-6 bg-gradient-to-br from-green-500 to-green-600 text-white">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium opacity-90">Ishda</h3>
+            <i class="fas fa-check-circle text-2xl opacity-50"></i>
+        </div>
+        <p class="text-3xl font-bold mb-1" id="presentCount">0</p>
+        <p class="text-xs opacity-75" id="presentPercent">0%</p>
+    </div>
+
+    <div class="stat-card p-6 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium opacity-90">Kech qolgan</h3>
+            <i class="fas fa-clock text-2xl opacity-50"></i>
+        </div>
+        <p class="text-3xl font-bold mb-1" id="lateCount">0</p>
+        <p class="text-xs opacity-75" id="avgLateMinutes">0 min</p>
+    </div>
+
+    <div class="stat-card p-6 bg-gradient-to-br from-red-500 to-red-600 text-white">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium opacity-90">Yo'q</h3>
+            <i class="fas fa-times-circle text-2xl opacity-50"></i>
+        </div>
+        <p class="text-3xl font-bold" id="absentCount">0</p>
+    </div>
+
+    <div class="stat-card p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium opacity-90">Ish vaqti</h3>
+            <i class="fas fa-business-time text-2xl opacity-50"></i>
+        </div>
+        <p class="text-3xl font-bold" id="totalWorkHours">0</p>
+        <p class="text-xs opacity-75">soat</p>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="bg-white rounded-t-xl border-b border-gray-200">
+    <div class="flex space-x-1 p-2">
+        <button onclick="switchTab('list')" id="listTab"
+            class="tab-button px-6 py-3 rounded-lg font-medium transition active">
+            <i class="fas fa-list mr-2"></i>
+            Ro'yxat
+        </button>
+        <button onclick="switchTab('calendar')" id="calendarTab"
+            class="tab-button px-6 py-3 rounded-lg font-medium transition">
+            <i class="fas fa-calendar-alt mr-2"></i>
+            Kalendar
+        </button>
+    </div>
+</div>
+
+<!-- List Tab -->
+<div id="listContent" class="tab-content">
+    <div class="table-container border-t-0 rounded-t-none">
+        <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800">Davomat ro'yxati</h3>
+                <p class="text-sm text-gray-500 mt-1" id="selectedDateDisplay"></p>
+            </div>
+<!--            <div class="flex gap-2">-->
+<!--                <button onclick="exportAttendance()" class="btn-secondary">-->
+<!--                    <i class="fas fa-file-excel mr-2"></i>-->
+<!--                    Eksport-->
+<!--                </button>-->
+<!--            </div>-->
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Xodim</th>
+                    <th>Filial</th>
+                    <th>Bo'lim</th>
+                    <th>Kirish</th>
+                    <th>Chiqish</th>
+                    <th>Ish vaqti</th>
+                    <th>Kech qolish</th>
+                    <th>Erta ketish</th>
+                    <th>Holat</th>
+<!--                    <th>Harakatlar</th>-->
+                </tr>
+            </thead>
+            <tbody id="attendanceTableBody">
+                <!-- Filled by JS -->
+            </tbody>
+        </table>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden py-16 text-center">
+            <i class="fas fa-calendar-times text-gray-300 text-6xl mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-700 mb-2">Davomat ma'lumoti yo'q</h3>
+            <p class="text-gray-500">Tanlangan sana uchun davomat qayd etilmagan</p>
+        </div>
+    </div>
+</div>
+
+<!-- Calendar Tab -->
+<div id="calendarContent" class="tab-content hidden">
+    <div class="bg-white rounded-b-xl shadow-sm border border-gray-200 border-t-0 p-4">
+        <div class="mb-4 flex items-center justify-between">
+            <div>
+                <h3 class="text-base font-semibold text-gray-800">Oylik kalendar</h3>
+                <p class="text-xs text-gray-500 mt-1">Davomat kalendari</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="previousMonth()" class="p-1.5 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-chevron-left text-sm"></i>
+                </button>
+                <div class="text-center">
+                    <p class="font-semibold text-gray-800 text-sm" id="calendarMonth">Yanvar 2025</p>
+                </div>
+                <button onclick="nextMonth()" class="p-1.5 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-chevron-right text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Employee Selector -->
+        <div class="mb-4">
+            <label class="form-label text-sm">Xodim tanlang</label>
+            <select id="calendarEmployee" class="form-input text-sm">
+                <option value="">Tanlang...</option>
+            </select>
+        </div>
+
+        <!-- Calendar Grid -->
+        <div id="calendarGrid" class="grid grid-cols-7 gap-1.5">
+            <!-- Filled by JS -->
+        </div>
+
+        <!-- Legend -->
+        <div class="mt-4 flex flex-wrap gap-3 text-xs">
+            <div class="flex items-center">
+                <div class="w-3 h-3 bg-green-500 rounded mr-1.5"></div>
+                <span class="text-gray-600">O'z vaqtida</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-3 h-3 bg-yellow-500 rounded mr-1.5"></div>
+                <span class="text-gray-600">Kech qolgan</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-red-500 rounded mr-2"></div>
+                <span class="text-gray-600">Yo'q</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-gray-200 rounded mr-2"></div>
+                <span class="text-gray-600">Dam olish kuni</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Detail Modal -->
+<div id="attendanceDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4">
+        <div class="border-b border-gray-200 px-8 py-6 flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800" id="detailEmployeeName">Davomat tafsilotlari</h2>
+                <p class="text-sm text-gray-500 mt-1" id="detailDate"></p>
+            </div>
+            <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        <div class="p-8" id="attendanceDetailContent">
+            <!-- Filled by JS -->
+        </div>
+    </div>
+</div>
+
+<style>
+.tab-button {
+    color: #64748b;
+}
+
+.tab-button.active {
+    background: #2563eb;
+    color: white;
+}
+
+.tab-button:not(.active):hover {
+    background: #f1f5f9;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 4px 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+    min-height: 60px;
+}
+
+.calendar-day:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
+.calendar-day.today {
+    border: 2px solid #3b82f6;
+    font-weight: 600;
+}
+
+.calendar-day.weekend {
+    background: #f3f4f6;
+}
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let attendanceLogs = [];
+let employees = [];
+let allEmployees = [];
+let branches = [];
+let departments = [];
+let currentCalendarMonth = new Date().getMonth();
+let currentCalendarYear = new Date().getFullYear();
+let liveUpdateInterval = null;
+
+// Load attendance
+async function loadAttendance() {
+    showLoading();
+
+    try {
+        const date = document.getElementById('selectedDate').value;
+        const branchId = document.getElementById('branchFilter').value;
+        const departmentId = document.getElementById('departmentFilter').value;
+        const status = document.getElementById('statusFilter').value;
+
+        console.log('🔍 Filters:', { date, branchId, departmentId, status });
+
+        const filters = {
+            start_date: date,
+            end_date: date,
+            per_page: 1000
+        };
+
+        if (branchId) filters.branch_id = branchId;
+        if (departmentId) filters.department_id = departmentId;
+
+        console.log('📤 API Request filters:', filters);
+
+        const response = await API.attendance.list(filters);
+        console.log('📊 Attendance API Response:', response);
+        console.log('📊 Response type:', typeof response);
+        console.log('📊 Response keys:', Object.keys(response));
+
+        // Handle response from /date-range endpoint
+        let employeesData = [];
+        if (response.attendance) {
+            employeesData = response.attendance;
+        } else if (response.employees) {
+            employeesData = response.employees;
+        } else if (Array.isArray(response)) {
+            employeesData = response;
+        } else {
+            console.error('❌ Unknown response format:', response);
+            throw new Error('Invalid response format from API');
+        }
+
+        console.log(`✅ Loaded ${employeesData.length} attendance records`);
+
+        attendanceLogs = employeesData;
+
+        // Filter by status
+        if (status === 'present') {
+            attendanceLogs = attendanceLogs.filter(a => a.check_in_time);
+        } else if (status === 'late') {
+            attendanceLogs = attendanceLogs.filter(a => a.late_minutes > 0);
+        } else if (status === 'absent') {
+            // Get all employees and find who's absent
+            const presentIds = attendanceLogs.map(a => a.employee_id);
+            const absentEmployees = allEmployees.filter(e => !presentIds.includes(e.id));
+            // Add absent employees to logs
+            attendanceLogs = [
+                ...attendanceLogs,
+                ...absentEmployees.map(e => ({
+                    employee_id: e.id,
+                    employee_name: e.full_name,
+                    employee_no: e.employee_no,
+                    branch_name: e.branch_name,
+                    department_name: e.department_name,
+                    date: date,
+                    check_in_time: null,
+                    check_out_time: null,
+                    is_absent: true
+                }))
+            ];
+        }
+
+        renderAttendanceTable();
+        updateStats();
+
+    } catch (error) {
+        console.error('Error loading attendance:', error);
+        showNotification('Davomatni yuklashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Load all employees
+async function loadAllEmployees() {
+    try {
+        const response = await API.employees.list({ per_page: 1000, status: 'active' });
+        allEmployees = response.employees || [];
+
+        const calendarSelect = document.getElementById('calendarEmployee');
+        calendarSelect.innerHTML = '<option value="">Tanlang...</option>' +
+            allEmployees.map(e => `<option value="${e.id}">${e.full_name} (${e.employee_no})</option>`).join('');
+
+    } catch (error) {
+        console.error('Error loading employees:', error);
+    }
+}
+
+// Load branches
+async function loadBranches() {
+    try {
+        const response = await API.branches.list({ per_page: 100 });
+        branches = response.branches || [];
+
+        const branchFilter = document.getElementById('branchFilter');
+        branchFilter.innerHTML = '<option value="">Barcha filiallar</option>' +
+            branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+    } catch (error) {
+        console.error('Error loading branches:', error);
+    }
+}
+
+// Load departments
+async function loadDepartments() {
+    try {
+        const response = await API.departments.list({ per_page: 100 });
+        departments = response.departments || [];
+
+        const deptFilter = document.getElementById('departmentFilter');
+        deptFilter.innerHTML = '<option value="">Barcha bo\'limlar</option>' +
+            departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    } catch (error) {
+        console.error('Error loading departments:', error);
+    }
+}
+
+function renderAttendanceTable() {
+    const tbody = document.getElementById('attendanceTableBody');
+    const emptyState = document.getElementById('emptyState');
+
+    if (attendanceLogs.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+
+    tbody.innerHTML = attendanceLogs.map(log => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 ${log.is_absent ? 'bg-gray-400' : 'bg-gradient-to-br from-blue-500 to-blue-600'} rounded-full flex items-center justify-center mr-3">
+                        <i class="fas fa-user text-white"></i>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-800">${log.employee_name || 'N/A'}</p>
+                        <p class="text-xs text-gray-500">${log.employee_no || 'N/A'}</p>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                <span class="badge badge-info">${log.branch_name || 'N/A'}</span>
+            </td>
+            <td class="px-6 py-4">
+                <span class="badge badge-secondary">${log.department_name || 'N/A'}</span>
+            </td>
+            <td class="px-6 py-4">
+                ${log.check_in_time
+                    ? `<span class="text-gray-700 font-medium">${formatTime(log.check_in_time)}</span>`
+                    : '<span class="text-gray-400">-</span>'
+                }
+            </td>
+            <td class="px-6 py-4">
+                ${log.check_out_time
+                    ? `<span class="text-gray-700 font-medium">${formatTime(log.check_out_time)}</span>`
+                    : '<span class="text-gray-400">-</span>'
+                }
+            </td>
+            <td class="px-6 py-4">
+                ${log.total_work_minutes
+                    ? `<span class="font-medium text-blue-600">${Math.floor(log.total_work_minutes / 60)}s ${log.total_work_minutes % 60}d</span>`
+                    : '<span class="text-gray-400">-</span>'
+                }
+            </td>
+            <td class="px-6 py-4">
+                ${log.late_minutes > 0
+                    ? `<span class="badge badge-warning">${log.late_minutes} min</span>`
+                    : log.is_absent
+                    ? '<span class="text-gray-400">-</span>'
+                    : '<span class="badge badge-success">0</span>'
+                }
+            </td>
+            <td class="px-6 py-4">
+                ${log.early_leave_minutes > 0
+                    ? `<span class="badge badge-warning">${log.early_leave_minutes} min</span>`
+                    : log.is_absent
+                    ? '<span class="text-gray-400">-</span>'
+                    : '<span class="badge badge-success">0</span>'
+                }
+            </td>
+            <td class="px-6 py-4">
+                ${getAttendanceStatusBadge(log)}
+            </td>
+            <td class="px-6 py-4">
+                ${!log.is_absent
+                    ? `<button onclick="viewAttendanceDetail('${log.employee_id}', '${log.date}')"
+                        class="text-blue-600 hover:text-blue-800" title="Batafsil">
+<!--                        <i class="fas fa-eye"></i>-->
+                    </button>`
+                    : '<span class="text-gray-400">-</span>'
+                }
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getAttendanceStatusBadge(log) {
+    if (log.is_absent) {
+        return '<span class="badge badge-danger"><i class="fas fa-times mr-1"></i>Yo\'q</span>';
+    } else if (log.late_minutes > 0) {
+        return '<span class="badge badge-warning"><i class="fas fa-clock mr-1"></i>Kech</span>';
+    } else {
+        return '<span class="badge badge-success"><i class="fas fa-check mr-1"></i>Ishda</span>';
+    }
+}
+
+function updateStats() {
+    const total = allEmployees.length;
+    const present = attendanceLogs.filter(a => !a.is_absent).length;
+    const late = attendanceLogs.filter(a => a.late_minutes > 0).length;
+    const absent = total - present;
+
+    const totalWorkMinutes = attendanceLogs.reduce((sum, a) => sum + (a.total_work_minutes || 0), 0);
+    const totalWorkHours = Math.floor(totalWorkMinutes / 60);
+
+    const totalLateMinutes = attendanceLogs.reduce((sum, a) => sum + (a.late_minutes || 0), 0);
+    const avgLate = late > 0 ? Math.round(totalLateMinutes / late) : 0;
+
+    const presentPercent = total > 0 ? Math.round((present / total) * 100) : 0;
+
+    document.getElementById('totalEmployees').textContent = total;
+    document.getElementById('presentCount').textContent = present;
+    document.getElementById('presentPercent').textContent = presentPercent + '%';
+    document.getElementById('lateCount').textContent = late;
+    document.getElementById('avgLateMinutes').textContent = avgLate + ' min';
+    document.getElementById('absentCount').textContent = absent;
+    document.getElementById('totalWorkHours').textContent = totalWorkHours;
+}
+
+// Calendar functions
+async function loadCalendar() {
+    const employeeId = document.getElementById('calendarEmployee').value;
+    if (!employeeId) {
+        document.getElementById('calendarGrid').innerHTML = '<p class="col-span-7 text-center text-gray-500 py-8">Xodim tanlang</p>';
+        return;
+    }
+
+    showLoading();
+
+    try {
+        // Calculate month range
+        const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1);
+        const lastDay = new Date(currentCalendarYear, currentCalendarMonth + 1, 0);
+
+        const startDate = firstDay.toISOString().split('T')[0];
+        const endDate = lastDay.toISOString().split('T')[0];
+
+        // Load attendance for the month AND employee schedule
+        const [attendanceResponse, scheduleResponse] = await Promise.all([
+            API.attendance.list({
+                employee_id: employeeId,
+                start_date: startDate,
+                end_date: endDate,
+                per_page: 1000
+            }),
+            API.employees.getSchedule(employeeId).catch(() => ({ schedule: [] }))
+        ]);
+
+        console.log('📊 Calendar API Response:', attendanceResponse);
+        console.log('📊 Response keys:', Object.keys(attendanceResponse));
+
+        // Handle different response formats
+        let monthLogs = [];
+        if (attendanceResponse.employees) {
+            monthLogs = attendanceResponse.employees;
+        } else if (attendanceResponse.attendance) {
+            monthLogs = attendanceResponse.attendance;
+        } else if (Array.isArray(attendanceResponse)) {
+            monthLogs = attendanceResponse;
+        }
+
+        console.log('📅 Month logs:', monthLogs.length, 'records');
+        if (monthLogs.length > 0) {
+            console.log('📋 Sample log:', monthLogs[0]);
+        }
+
+        const employeeSchedule = scheduleResponse.schedule || [];
+
+        console.log('📅 Employee schedule loaded:', employeeSchedule);
+
+        // Update month display
+        const monthNames = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+                           'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
+        document.getElementById('calendarMonth').textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
+
+        // Render calendar with schedule
+        renderCalendar(monthLogs, employeeSchedule);
+
+    } catch (error) {
+        console.error('Error loading calendar:', error);
+        showNotification('Kalendar yuklashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function renderCalendar(monthLogs, employeeSchedule = []) {
+    const grid = document.getElementById('calendarGrid');
+
+    // Week day headers
+    const weekDays = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'];
+    const headerHTML = weekDays.map(day =>
+        `<div class="text-center font-semibold text-gray-600 py-2">${day}</div>`
+    ).join('');
+
+    // Get first day of month
+    const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1);
+    const lastDay = new Date(currentCalendarYear, currentCalendarMonth + 1, 0);
+    const firstDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // Monday = 0
+
+    // Build schedule map for quick lookup
+    const scheduleMap = {};
+    employeeSchedule.forEach(day => {
+        scheduleMap[day.day_of_week] = day;
+    });
+
+    const daysHTML = [];
+
+    // Empty cells before first day
+    for (let i = 0; i < firstDayOfWeek; i++) {
+        daysHTML.push('<div></div>');
+    }
+
+    // Days of month
+    const today = new Date();
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        const date = new Date(currentCalendarYear, currentCalendarMonth, day);
+
+        // Use local date string (avoid timezone conversion)
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${dayStr}`;
+
+        const isToday = date.toDateString() === today.toDateString();
+
+        // Check employee schedule for this day of week
+        const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay(); // 1=Mon, 7=Sun
+        const scheduledDay = scheduleMap[dayOfWeek];
+        const isDayOff = scheduledDay ? scheduledDay.is_day_off : (dayOfWeek === 6 || dayOfWeek === 7);
+
+        // Find log for this day
+        const log = monthLogs.find(l => l.date === dateStr);
+
+        let bgColor = 'bg-white';
+        let borderColor = 'border-gray-200';
+        let icon = '';
+        let label = '';
+
+        // Detailed debug
+        if (log) {
+            console.log(`Day ${day}: HAS LOG`, {
+                date: dateStr,
+                late_minutes: log.late_minutes,
+                check_in: log.check_in_time,
+                isDayOff: isDayOff
+            });
+        } else if (date <= today && !isDayOff) {
+            console.log(`Day ${day}: NO LOG (absent)`, { date: dateStr, isDayOff });
+        }
+
+        if (isDayOff) {
+            // Employee's off day (from schedule)
+            bgColor = 'bg-gray-100';
+            borderColor = 'border-gray-300';
+            label = '<div class="text-[10px] text-gray-500">Dam</div>';
+        } else if (log) {
+            // Has attendance log
+            const lateMin = parseInt(log.late_minutes) || 0;
+
+            if (lateMin > 0) {
+                // Late
+                bgColor = 'bg-yellow-50';
+                borderColor = 'border-yellow-400';
+                icon = '<i class="fas fa-clock text-yellow-600 text-xs"></i>';
+                console.log(`  → YELLOW (late ${lateMin} min)`);
+            } else {
+                // On time
+                bgColor = 'bg-green-50';
+                borderColor = 'border-green-400';
+                icon = '<i class="fas fa-check text-green-600 text-xs"></i>';
+                console.log(`  → GREEN (on time, late=${lateMin})`);
+            }
+        } else if (date <= today) {
+            // No log and past date (absent)
+            bgColor = 'bg-red-50';
+            borderColor = 'border-red-400';
+            icon = '<i class="fas fa-times text-red-600 text-xs"></i>';
+            console.log(`  → RED (absent)`);
+        }
+
+        daysHTML.push(`
+            <div class="calendar-day ${bgColor} border ${borderColor} ${isToday ? 'today ring-2 ring-blue-500' : ''}"
+                onclick="selectCalendarDay('${dateStr}')">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-sm font-medium">${day}</span>
+                    ${icon}
+                </div>
+                ${label}
+                ${log ? `
+                    <div class="text-[10px] text-gray-600 mt-1">
+                        <div>${formatTime(log.check_in_time)}</div>
+                        ${log.late_minutes > 0 ? `<div class="text-yellow-600">+${log.late_minutes}min</div>` : ''}
+                    </div>
+                ` : ''}
+            </div>
+        `);
+    }
+
+    grid.innerHTML = headerHTML + daysHTML.join('');
+}
+
+function selectCalendarDay(date) {
+    document.getElementById('selectedDate').value = date;
+    switchTab('list');
+    loadAttendance();
+}
+
+function previousMonth() {
+    currentCalendarMonth--;
+    if (currentCalendarMonth < 0) {
+        currentCalendarMonth = 11;
+        currentCalendarYear--;
+    }
+    loadCalendar();
+}
+
+function nextMonth() {
+    currentCalendarMonth++;
+    if (currentCalendarMonth > 11) {
+        currentCalendarMonth = 0;
+        currentCalendarYear++;
+    }
+    loadCalendar();
+}
+
+// Live attendance
+async function loadLiveAttendance() {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+
+        const response = await API.attendance.list({
+            start_date: today,
+            end_date: today,
+            per_page: 100
+        });
+
+        const logs = response.employees || [];
+
+        // Sort by check_in_time descending
+        logs.sort((a, b) => {
+            const timeA = a.check_in_time ? new Date(a.check_in_time) : 0;
+            const timeB = b.check_in_time ? new Date(b.check_in_time) : 0;
+            return timeB - timeA;
+        });
+
+        renderLiveAttendance(logs.slice(0, 20));
+
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('uz-UZ');
+
+    } catch (error) {
+        console.error('Error loading live attendance:', error);
+    }
+}
+
+function renderLiveAttendance(logs) {
+    const container = document.getElementById('liveAttendanceList');
+
+    if (logs.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-500">Hali hech kim kirmagan</p>';
+        return;
+    }
+
+    container.innerHTML = logs.map((log, idx) => {
+        const timeAgo = getTimeAgo(log.check_in_time);
+        return `
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                        <span class="text-white font-bold">${log.employee_name.charAt(0)}</span>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-800">${log.employee_name}</p>
+                        <p class="text-xs text-gray-500">${log.branch_name || 'N/A'}</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="font-medium text-gray-800">${formatTime(log.check_in_time)}</p>
+                    <p class="text-xs text-gray-500">${timeAgo}</p>
+                    ${log.late_minutes > 0
+                        ? `<span class="badge badge-warning mt-1">${log.late_minutes} min kech</span>`
+                        : '<span class="badge badge-success mt-1">O\'z vaqtida</span>'
+                    }
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getTimeAgo(dateTime) {
+    if (!dateTime) return '-';
+
+    const now = new Date();
+    const time = new Date(dateTime);
+    const diff = Math.floor((now - time) / 1000); // seconds
+
+    if (diff < 60) return 'Hozirgina';
+    if (diff < 3600) return `${Math.floor(diff / 60)} daqiqa oldin`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} soat oldin`;
+    return formatDate(dateTime);
+}
+
+// View detail
+async function viewAttendanceDetail(employeeId, date) {
+    showLoading();
+
+    try {
+        const response = await API.attendance.list({
+            employee_id: employeeId,
+            start_date: date,
+            end_date: date
+        });
+
+        const log = response.employees[0];
+        if (!log) {
+            showNotification('Ma\'lumot topilmadi', 'error');
+            return;
+        }
+
+        document.getElementById('detailEmployeeName').textContent = log.employee_name;
+        document.getElementById('detailDate').textContent = formatDate(date);
+
+        document.getElementById('attendanceDetailContent').innerHTML = `
+            <div class="grid grid-cols-2 gap-6">
+                <div class="space-y-4">
+                    <div class="flex justify-between p-3 bg-gray-50 rounded-lg">
+                        <span class="text-gray-600">Kirish vaqti:</span>
+                        <span class="font-medium text-gray-800">${formatTime(log.check_in_time)}</span>
+                    </div>
+
+                    <div class="flex justify-between p-3 bg-gray-50 rounded-lg">
+                        <span class="text-gray-600">Chiqish vaqti:</span>
+                        <span class="font-medium text-gray-800">${log.check_out_time ? formatTime(log.check_out_time) : '-'}</span>
+                    </div>
+
+                    <div class="flex justify-between p-3 bg-gray-50 rounded-lg">
+                        <span class="text-gray-600">Jami ish vaqti:</span>
+                        <span class="font-medium text-blue-600">${log.total_work_minutes ? Math.floor(log.total_work_minutes / 60) + 's ' + (log.total_work_minutes % 60) + 'd' : '-'}</span>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex justify-between p-3 ${log.late_minutes > 0 ? 'bg-yellow-50' : 'bg-green-50'} rounded-lg">
+                        <span class="text-gray-600">Kech qolish:</span>
+                        <span class="font-medium ${log.late_minutes > 0 ? 'text-yellow-600' : 'text-green-600'}">
+                            ${log.late_minutes || 0} daqiqa
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between p-3 ${log.early_leave_minutes > 0 ? 'bg-orange-50' : 'bg-green-50'} rounded-lg">
+                        <span class="text-gray-600">Erta ketish:</span>
+                        <span class="font-medium ${log.early_leave_minutes > 0 ? 'text-orange-600' : 'text-green-600'}">
+                            ${log.early_leave_minutes || 0} daqiqa
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between p-3 ${log.overtime_minutes > 0 ? 'bg-purple-50' : 'bg-gray-50'} rounded-lg">
+                        <span class="text-gray-600">Ortiqcha ish:</span>
+                        <span class="font-medium ${log.overtime_minutes > 0 ? 'text-purple-600' : 'text-gray-600'}">
+                            ${log.overtime_minutes || 0} daqiqa
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            ${log.device_name || log.ip ? `
+                <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p class="text-sm font-medium text-blue-800 mb-2">Qurilma ma'lumotlari</p>
+                    <div class="grid grid-cols-2 gap-2 text-sm text-blue-700">
+                        ${log.device_name ? `<div>Qurilma: ${log.device_name}</div>` : ''}
+                        ${log.ip ? `<div>IP: ${log.ip}</div>` : ''}
+                    </div>
+                </div>
+            ` : ''}
+        `;
+
+        document.getElementById('attendanceDetailModal').classList.remove('hidden');
+
+    } catch (error) {
+        console.error('Error loading detail:', error);
+        showNotification('Ma\'lumot yuklashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function closeDetailModal() {
+    document.getElementById('attendanceDetailModal').classList.add('hidden');
+}
+
+// Tab switching
+let listUpdateInterval = null;
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(tab + 'Tab').classList.add('active');
+
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+    document.getElementById(tab + 'Content').classList.remove('hidden');
+
+    // Clear all intervals first
+    if (liveUpdateInterval) {
+        clearInterval(liveUpdateInterval);
+        liveUpdateInterval = null;
+    }
+    if (listUpdateInterval) {
+        clearInterval(listUpdateInterval);
+        listUpdateInterval = null;
+    }
+
+    if (tab === 'list') {
+        loadAttendance();
+        // Start auto-refresh for list tab (every 30 seconds)
+        listUpdateInterval = setInterval(() => {
+            loadAttendance();
+            console.log('🔄 Auto-refreshing list...');
+        }, 30000);
+    } else if (tab === 'calendar') {
+        loadCalendar();
+    } else if (tab === 'live') {
+        loadLiveAttendance();
+        // Start live updates (every 30 seconds)
+        liveUpdateInterval = setInterval(() => {
+            loadLiveAttendance();
+            console.log('🔄 Auto-refreshing live...');
+        }, 30000);
+    }
+}
+
+// Export
+function exportAttendance() {
+    showNotification('Excel eksport tez orada qo\'shiladi', 'info');
+}
+
+// Filters
+document.getElementById('selectedDate').addEventListener('change', loadAttendance);
+document.getElementById('branchFilter').addEventListener('change', loadAttendance);
+document.getElementById('departmentFilter').addEventListener('change', loadAttendance);
+document.getElementById('statusFilter').addEventListener('change', loadAttendance);
+document.getElementById('calendarEmployee').addEventListener('change', loadCalendar);
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    // Set today's date
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('selectedDate').value = today;
+    document.getElementById('selectedDateDisplay').textContent = formatDate(today);
+
+    loadBranches();
+    loadDepartments();
+    loadAllEmployees();
+    loadAttendance();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (liveUpdateInterval) {
+        clearInterval(liveUpdateInterval);
+    }
+    if (listUpdateInterval) {
+        clearInterval(listUpdateInterval);
+    }
+});
+</script>
+{% endblock %}

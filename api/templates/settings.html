@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+
+{% block title %}Sozlamalar - Davomat Tizimi{% endblock %}
+{% block page_title %}Sozlamalar{% endblock %}
+{% block page_subtitle %}Kompaniya va tizim sozlamalari{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Company Information -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-building text-blue-600 mr-3"></i>
+            Kompaniya ma'lumotlari
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Logo Upload -->
+            <div class="md:col-span-2">
+                <label class="form-label">Kompaniya logotipi</label>
+                <div class="flex items-center gap-4">
+                    <div class="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                        <img id="logoPreview" src="" alt="Logo" class="hidden max-w-full max-h-full rounded-lg">
+                        <i id="logoPlaceholder" class="fas fa-image text-gray-400 text-3xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <input type="file" id="logoInput" accept="image/*" class="hidden">
+                        <button onclick="document.getElementById('logoInput').click()" class="btn-secondary mb-2">
+                            <i class="fas fa-upload mr-2"></i>
+                            Logotip yuklash
+                        </button>
+                        <button onclick="deleteLogo()" id="deleteLogoBtn" class="btn-danger mb-2 hidden">
+                            <i class="fas fa-trash mr-2"></i>
+                            O'chirish
+                        </button>
+                        <p class="text-xs text-gray-500">PNG, JPG, GIF, SVG (Max 2MB)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="form-label">Kompaniya nomi <span class="text-red-500">*</span></label>
+                <input type="text" id="companyName" class="form-input" required>
+            </div>
+
+            <div>
+                <label class="form-label">Email</label>
+                <input type="email" id="email" class="form-input" placeholder="info@company.uz">
+            </div>
+
+            <div>
+                <label class="form-label">Telefon</label>
+                <input type="tel" id="phone" class="form-input" placeholder="+998 90 123 45 67">
+            </div>
+
+            <div>
+                <label class="form-label">Veb-sayt</label>
+                <input type="url" id="website" class="form-input" placeholder="https://company.uz">
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="form-label">Manzil</label>
+                <textarea id="address" class="form-input" rows="2" placeholder="Toshkent sh., Chilonzor t."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Work Settings -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-clock text-blue-600 mr-3"></i>
+            Ish vaqti sozlamalari
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="form-label">Kechikish chegarasi (daqiqa)</label>
+                <input type="number" id="lateThreshold" class="form-input" min="0" max="120"
+                       placeholder="10">
+                <p class="text-xs text-gray-500 mt-1">Xodim shu vaqtdan oshiq kechiksa, kech qolgan hisoblanadi</p>
+            </div>
+
+            <div>
+                <label class="form-label">Ortiqcha ish vaqti chegarasi (daqiqa)</label>
+                <input type="number" id="overtimeThreshold" class="form-input" min="0" max="240"
+                       placeholder="30">
+                <p class="text-xs text-gray-500 mt-1">Xodim shu vaqtdan oshiq ishlasa, ortiqcha ish hisoblanadi</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Penalty Settings -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-exclamation-triangle text-blue-600 mr-3"></i>
+            Jarima sozlamalari
+        </h3>
+
+        <div class="mb-6">
+            <label class="flex items-center cursor-pointer">
+                <input type="checkbox" id="autoPenaltyEnabled" class="mr-3 w-5 h-5">
+                <span class="text-gray-700 font-medium">Avtomatik jarima hisoblash</span>
+            </label>
+            <p class="text-sm text-gray-500 ml-8 mt-1">Kech qolganlik uchun avtomatik jarima hisoblanadi</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="form-label">Kechikish jarimasi (so'm/daqiqa)</label>
+                <input type="number" id="latePenaltyPerMinute" class="form-input" min="0" step="100"
+                       placeholder="1000">
+                <p class="text-xs text-gray-500 mt-1">Har bir kechikgan daqiqa uchun jarima</p>
+            </div>
+
+            <div>
+                <label class="form-label">Kelmagan jarima (so'm)</label>
+                <input type="number" id="absencePenalty" class="form-input" min="0" step="1000"
+                       placeholder="50000">
+                <p class="text-xs text-gray-500 mt-1">Ishga kelmagan kun uchun jarima</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Button -->
+    <div class="flex items-center justify-end gap-3">
+        <button onclick="loadSettings()" class="btn-secondary">
+            <i class="fas fa-undo mr-2"></i>
+            Bekor qilish
+        </button>
+        <button onclick="saveSettings()" class="btn-primary">
+            <i class="fas fa-save mr-2"></i>
+            Saqlash
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentSettings = {};
+
+// Load settings
+async function loadSettings() {
+    showLoading();
+
+    try {
+        const response = await API.settings.get();
+        console.log('Settings loaded:', response);
+        console.log('Full response JSON:', JSON.stringify(response, null, 2));
+
+        // Handle nested data if exists
+        const data = response.data || response;
+        currentSettings = data;
+
+        console.log('Parsed data:', data);
+        console.log('Parsed data JSON:', JSON.stringify(data, null, 2));
+        console.log('All keys:', Object.keys(data));
+        console.log('Logo URL value:', data.logo_url);
+        console.log('Logo URL type:', typeof data.logo_url);
+        console.log('Company name:', data.company_name);
+
+        // Company info
+        document.getElementById('companyName').value = data.company_name || '';
+        document.getElementById('email').value = data.email || '';
+        document.getElementById('phone').value = data.phone || '';
+        document.getElementById('website').value = data.website || '';
+        document.getElementById('address').value = data.address || '';
+
+        // Logo
+        if (data.logo_url) {
+            console.log('Logo URL:', data.logo_url);
+            document.getElementById('logoPreview').src = data.logo_url;
+            document.getElementById('logoPreview').classList.remove('hidden');
+            document.getElementById('logoPlaceholder').classList.add('hidden');
+            document.getElementById('deleteLogoBtn').classList.remove('hidden');
+        } else {
+            console.log('No logo URL found');
+            document.getElementById('logoPreview').classList.add('hidden');
+            document.getElementById('logoPlaceholder').classList.remove('hidden');
+            document.getElementById('deleteLogoBtn').classList.add('hidden');
+        }
+
+        // Work settings
+        document.getElementById('lateThreshold').value = data.late_threshold_minutes || 10;
+        document.getElementById('overtimeThreshold').value = data.overtime_threshold_minutes || 30;
+
+        // Penalty settings
+        document.getElementById('autoPenaltyEnabled').checked = data.auto_penalty_enabled || false;
+        document.getElementById('latePenaltyPerMinute').value = data.late_penalty_per_minute || 1000;
+        document.getElementById('absencePenalty').value = data.absence_penalty_amount || 50000;
+
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        showNotification('Sozlamalarni yuklashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Save settings
+async function saveSettings() {
+    showLoading();
+
+    try {
+        const data = {
+            company_name: document.getElementById('companyName').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value,
+            website: document.getElementById('website').value,
+            address: document.getElementById('address').value,
+            late_threshold_minutes: parseInt(document.getElementById('lateThreshold').value),
+            overtime_threshold_minutes: parseInt(document.getElementById('overtimeThreshold').value),
+            auto_penalty_enabled: document.getElementById('autoPenaltyEnabled').checked,
+            late_penalty_per_minute: parseFloat(document.getElementById('latePenaltyPerMinute').value),
+            absence_penalty_amount: parseFloat(document.getElementById('absencePenalty').value)
+        };
+
+        console.log('Saving settings:', data);
+
+        const response = await API.settings.update(data);
+        console.log('Save response:', response);
+
+        showNotification('Sozlamalar muvaffaqiyatli saqlandi', 'success');
+
+        // Reload to show updated data
+        setTimeout(() => {
+            loadSettings();
+        }, 500);
+
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        showNotification('Sozlamalarni saqlashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Logo upload
+document.getElementById('logoInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        showNotification('Fayl hajmi 2MB dan oshmasligi kerak', 'error');
+        return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+        showNotification('Faqat PNG, JPG, GIF, SVG formatlar qabul qilinadi', 'error');
+        return;
+    }
+
+    // Preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById('logoPreview').src = e.target.result;
+        document.getElementById('logoPreview').classList.remove('hidden');
+        document.getElementById('logoPlaceholder').classList.add('hidden');
+    };
+    reader.readAsDataURL(file);
+
+    // Upload
+    showLoading();
+    try {
+        const formData = new FormData();
+        formData.append('logo', file);
+
+        console.log('Uploading logo...');
+        const response = await API.settings.uploadLogo(formData);
+        console.log('Upload response:', response);
+
+        document.getElementById('deleteLogoBtn').classList.remove('hidden');
+        showNotification('Logotip muvaffaqiyatli yuklandi', 'success');
+
+        // Reload to get updated logo_url from server
+        setTimeout(() => {
+            loadSettings();
+        }, 500);
+
+    } catch (error) {
+        console.error('Error uploading logo:', error);
+        showNotification('Logotipni yuklashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
+// Delete logo
+async function deleteLogo() {
+    if (!confirm('Logotipni o\'chirishni xohlaysizmi?')) return;
+
+    showLoading();
+    try {
+        await API.settings.deleteLogo();
+
+        document.getElementById('logoPreview').src = '';
+        document.getElementById('logoPreview').classList.add('hidden');
+        document.getElementById('logoPlaceholder').classList.remove('hidden');
+        document.getElementById('deleteLogoBtn').classList.add('hidden');
+        document.getElementById('logoInput').value = '';
+
+        showNotification('Logotip o\'chirildi', 'success');
+
+    } catch (error) {
+        console.error('Error deleting logo:', error);
+        showNotification('Logotipni o\'chirishda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', loadSettings);
+</script>
+{% endblock %}

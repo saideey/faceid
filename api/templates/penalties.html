@@ -1,0 +1,928 @@
+{% extends "base.html" %}
+
+{% block title %}Jarimalar - Davomat Tizimi{% endblock %}
+{% block page_title %}Jarimalar{% endblock %}
+{% block page_subtitle %}Jarimalarni boshqarish va kuzatish{% endblock %}
+
+{% block content %}
+<!-- Filters and Actions -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <!-- Filters -->
+        <div class="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div class="relative">
+                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="searchInput" placeholder="Xodim qidirish..." 
+                    class="form-input pl-10">
+            </div>
+            
+            <input type="date" id="startDate" class="form-input">
+            <input type="date" id="endDate" class="form-input">
+            
+            <select id="statusFilter" class="form-input">
+                <option value="">Barcha holatlar</option>
+                <option value="active">Faol</option>
+                <option value="waived">Bekor qilingan</option>
+                <option value="excused">Sababli</option>
+            </select>
+            
+            <select id="employeeFilter" class="form-input">
+                <option value="">Barcha xodimlar</option>
+            </select>
+        </div>
+        
+        <!-- Actions -->
+        <div class="flex gap-3">
+            <button onclick="bulkExcuseModal()" class="btn-secondary">
+                <i class="fas fa-check-circle mr-2"></i>
+                Ommaviy sabablash
+            </button>
+            <button onclick="openAddPenaltyModal()" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i>
+                Jarima qo'shish
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+    <div class="stat-card p-6 bg-gradient-to-br from-red-500 to-red-600 text-white">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium opacity-90">Jami jarimalar</h3>
+            <i class="fas fa-exclamation-triangle text-2xl opacity-50"></i>
+        </div>
+        <p class="text-3xl font-bold mb-1" id="totalPenalties">0</p>
+        <p class="text-xs opacity-75" id="totalPenaltyAmount">0 so'm</p>
+    </div>
+    
+    <div class="stat-card p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium opacity-90">Faol jarimalar</h3>
+            <i class="fas fa-ban text-2xl opacity-50"></i>
+        </div>
+        <p class="text-3xl font-bold mb-1" id="activePenalties">0</p>
+        <p class="text-xs opacity-75" id="activePenaltyAmount">0 so'm</p>
+    </div>
+    
+    <div class="stat-card p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium opacity-90">Sababli</h3>
+            <i class="fas fa-heart text-2xl opacity-50"></i>
+        </div>
+        <p class="text-3xl font-bold mb-1" id="excusedPenalties">0</p>
+        <p class="text-xs opacity-75" id="excusedPenaltyAmount">0 so'm</p>
+    </div>
+    
+    <div class="stat-card p-6 bg-gradient-to-br from-gray-500 to-gray-600 text-white">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium opacity-90">Bekor qilingan</h3>
+            <i class="fas fa-times-circle text-2xl opacity-50"></i>
+        </div>
+        <p class="text-3xl font-bold mb-1" id="waivedPenalties">0</p>
+        <p class="text-xs opacity-75" id="waivedPenaltyAmount">0 so'm</p>
+    </div>
+</div>
+
+<!-- Penalties Table -->
+<div class="table-container">
+    <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div>
+            <h3 class="text-lg font-semibold text-gray-800">Jarimalar ro'yxati</h3>
+            <p class="text-sm text-gray-500 mt-1">Barcha jarimalar va ularning holatlari</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="selectAll()" class="btn-secondary text-sm py-2">
+                <i class="fas fa-check-square mr-1"></i>
+                Barchasini tanlash
+            </button>
+            <button onclick="bulkActions()" class="btn-secondary text-sm py-2" id="bulkActionsBtn" disabled>
+                <i class="fas fa-tasks mr-1"></i>
+                Ommaviy amallar
+            </button>
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th class="w-12">
+                    <input type="checkbox" id="selectAllCheckbox" class="rounded">
+                </th>
+                <th>Xodim</th>
+                <th>Sana</th>
+                <th>Kech qolish</th>
+                <th>Summa</th>
+                <th>Holat</th>
+                <th>Sabab</th>
+                <th>Harakatlar</th>
+            </tr>
+        </thead>
+        <tbody id="penaltiesTableBody">
+            <!-- Filled by JS -->
+        </tbody>
+    </table>
+    
+    <!-- Empty State -->
+    <div id="emptyState" class="hidden py-16 text-center">
+        <i class="fas fa-check-circle text-gray-300 text-6xl mb-4"></i>
+        <h3 class="text-xl font-semibold text-gray-700 mb-2">Jarimalar topilmadi</h3>
+        <p class="text-gray-500">Tanlangan filtrlar bo'yicha jarima mavjud emas</p>
+    </div>
+</div>
+
+<!-- Pagination -->
+<div class="flex items-center justify-between mt-6">
+    <div class="text-sm text-gray-600">
+        Ko'rsatilmoqda: <span id="showingCount">0</span> / <span id="totalCount">0</span>
+    </div>
+    <div class="flex gap-2" id="paginationContainer">
+        <!-- Filled by JS -->
+    </div>
+</div>
+
+<!-- Add Manual Penalty Modal -->
+<div id="addPenaltyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4">
+        <div class="border-b border-gray-200 px-8 py-6">
+            <h2 class="text-2xl font-bold text-gray-800">Qo'lda jarima qo'shish</h2>
+            <p class="text-sm text-gray-500 mt-1">Xodimga manual jarima berish</p>
+        </div>
+        
+        <form id="addPenaltyForm" class="p-8">
+            <div class="space-y-6">
+                <div>
+                    <label class="form-label">Xodim <span class="text-red-500">*</span></label>
+                    <select id="penaltyEmployeeId" required class="form-input">
+                        <option value="">Tanlang</option>
+                    </select>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label">Summa (UZS) <span class="text-red-500">*</span></label>
+                        <input type="number" id="penaltyAmount" required class="form-input" 
+                            placeholder="50000" step="1000">
+                    </div>
+                    
+                    <div>
+                        <label class="form-label">Sana <span class="text-red-500">*</span></label>
+                        <input type="date" id="penaltyDate" required class="form-input">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="form-label">Sabab <span class="text-red-500">*</span></label>
+                    <textarea id="penaltyReason" required class="form-input" rows="3" 
+                        placeholder="Jarima sababi..."></textarea>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-end gap-3 mt-8">
+                <button type="button" onclick="closeAddPenaltyModal()" class="btn-secondary">
+                    Bekor qilish
+                </button>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save mr-2"></i>
+                    Saqlash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Excuse Penalty Modal -->
+<div id="excuseModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4">
+        <div class="border-b border-gray-200 px-8 py-6">
+            <h2 class="text-2xl font-bold text-gray-800">Jarimani sabablash</h2>
+            <p class="text-sm text-gray-500 mt-1">Kechikish sababini kiriting</p>
+        </div>
+        
+        <form id="excuseForm" class="p-8">
+            <input type="hidden" id="excusePenaltyId">
+            
+            <div class="mb-6">
+                <label class="form-label">Sabab <span class="text-red-500">*</span></label>
+                <textarea id="excuseReason" required class="form-input" rows="4" 
+                    placeholder="Masalan: Oilaviy vaziyat, sog'liq muammosi, transport muammosi..."></textarea>
+            </div>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div class="flex items-start">
+                    <i class="fas fa-info-circle text-blue-600 mt-1 mr-3"></i>
+                    <div>
+                        <p class="text-sm font-medium text-blue-800 mb-1">Ma'lumot</p>
+                        <p class="text-xs text-blue-700">Sababli jarimalar oylik hisoblashda hisobga olinmaydi va xodimning oyligidan ayirib tashlanmaydi.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-end gap-3">
+                <button type="button" onclick="closeExcuseModal()" class="btn-secondary">
+                    Bekor qilish
+                </button>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-check mr-2"></i>
+                    Sabablash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Excuse Modal -->
+<div id="bulkExcuseModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4">
+        <div class="border-b border-gray-200 px-8 py-6">
+            <h2 class="text-2xl font-bold text-gray-800">Ommaviy sabablash</h2>
+            <p class="text-sm text-gray-500 mt-1">Bir nechta jarimani bir vaqtda sabablash</p>
+        </div>
+        
+        <form id="bulkExcuseForm" class="p-8">
+            <div class="space-y-6">
+                <div>
+                    <label class="form-label">Sana <span class="text-red-500">*</span></label>
+                    <input type="date" id="bulkExcuseDate" required class="form-input">
+                    <p class="text-xs text-gray-500 mt-1">Shu sanadagi barcha jarimalar sabablanadi</p>
+                </div>
+                
+                <div>
+                    <label class="form-label">Xodimlar</label>
+                    <div class="border border-gray-200 rounded-lg max-h-48 overflow-y-auto p-4" id="bulkExcuseEmployees">
+                        <!-- Filled by JS -->
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Bo'sh qoldiring - barcha xodimlar</p>
+                </div>
+                
+                <div>
+                    <label class="form-label">Sabab <span class="text-red-500">*</span></label>
+                    <textarea id="bulkExcuseReason" required class="form-input" rows="3" 
+                        placeholder="Masalan: Yomon ob-havo sharoiti, transport muammosi..."></textarea>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-end gap-3 mt-8">
+                <button type="button" onclick="closeBulkExcuseModal()" class="btn-secondary">
+                    Bekor qilish
+                </button>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-check-double mr-2"></i>
+                    Sabablash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Waive Penalty Modal -->
+<div id="waiveModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4">
+        <div class="border-b border-gray-200 px-8 py-6">
+            <h2 class="text-2xl font-bold text-gray-800">Jarimani bekor qilish</h2>
+            <p class="text-sm text-gray-500 mt-1">Jarimani butunlay bekor qilish</p>
+        </div>
+        
+        <form id="waiveForm" class="p-8">
+            <input type="hidden" id="waivePenaltyId">
+            
+            <div class="mb-6">
+                <label class="form-label">Sabab <span class="text-red-500">*</span></label>
+                <textarea id="waiveReason" required class="form-input" rows="4" 
+                    placeholder="Bekor qilish sababi..."></textarea>
+            </div>
+            
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 mt-1 mr-3"></i>
+                    <div>
+                        <p class="text-sm font-medium text-yellow-800 mb-1">Ogohlantirish</p>
+                        <p class="text-xs text-yellow-700">Bekor qilingan jarimalar oylik hisoblashda hisobga olinmaydi.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-end gap-3">
+                <button type="button" onclick="closeWaiveModal()" class="btn-secondary">
+                    Bekor qilish
+                </button>
+                <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                    <i class="fas fa-ban mr-2"></i>
+                    Bekor qilish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let penalties = [];
+let employees = [];
+let currentPage = 1;
+let perPage = 20;
+let selectedPenalties = [];
+
+// Load penalties
+async function loadPenalties() {
+    showLoading();
+    
+    try {
+        const filters = {
+            page: currentPage,
+            per_page: perPage
+        };
+        
+        const search = document.getElementById('searchInput').value;
+        if (search) filters.search = search;
+        
+        const startDate = document.getElementById('startDate').value;
+        if (startDate) filters.start_date = startDate;
+        
+        const endDate = document.getElementById('endDate').value;
+        if (endDate) filters.end_date = endDate;
+        
+        const employeeId = document.getElementById('employeeFilter').value;
+        if (employeeId) filters.employee_id = employeeId;
+        
+        const status = document.getElementById('statusFilter').value;
+        if (status === 'waived') filters.is_waived = true;
+        else if (status === 'excused') filters.is_excused = true;
+        else if (status === 'active') {
+            filters.is_waived = false;
+            filters.is_excused = false;
+        }
+        
+        const response = await API.penalties.list(filters);
+        penalties = response.penalties || [];
+        
+        renderPenaltiesTable();
+        updateStats();
+        renderPagination(response.pagination);
+        
+    } catch (error) {
+        console.error('Error loading penalties:', error);
+        showNotification('Jarimalarni yuklashda xatolik', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Load employees
+async function loadEmployees() {
+    try {
+        const response = await API.employees.list({ per_page: 1000, status: 'active' });
+        employees = response.employees || [];
+        
+        const employeeFilter = document.getElementById('employeeFilter');
+        const penaltyEmployeeSelect = document.getElementById('penaltyEmployeeId');
+        
+        const options = employees.map(e => 
+            `<option value="${e.id}">${e.full_name} (${e.employee_no})</option>`
+        ).join('');
+        
+        employeeFilter.innerHTML = '<option value="">Barcha xodimlar</option>' + options;
+        penaltyEmployeeSelect.innerHTML = '<option value="">Tanlang</option>' + options;
+        
+    } catch (error) {
+        console.error('Error loading employees:', error);
+    }
+}
+
+function renderPenaltiesTable() {
+    const tbody = document.getElementById('penaltiesTableBody');
+    const emptyState = document.getElementById('emptyState');
+    
+    if (penalties.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+    }
+    
+    emptyState.classList.add('hidden');
+    
+    tbody.innerHTML = penalties.map(penalty => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4">
+                <input type="checkbox" class="rounded penalty-checkbox" value="${penalty.id}" 
+                    ${selectedPenalties.includes(penalty.id) ? 'checked' : ''}>
+            </td>
+            <td class="px-6 py-4">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center mr-3">
+                        <i class="fas fa-user text-white"></i>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-800">${penalty.employee_name || 'N/A'}</p>
+                        <p class="text-xs text-gray-500">${penalty.employee_no || 'N/A'}</p>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 text-gray-600">
+                ${formatDate(penalty.date)}
+            </td>
+            <td class="px-6 py-4">
+                <div>
+                    <p class="font-medium text-orange-600">${penalty.late_minutes || 0} daqiqa</p>
+                    <p class="text-xs text-gray-500">${Math.floor((penalty.late_minutes || 0) / 60)}s ${(penalty.late_minutes || 0) % 60}d</p>
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                <p class="font-bold text-red-600">${formatCurrency(penalty.amount)}</p>
+            </td>
+            <td class="px-6 py-4">
+                ${getPenaltyStatusBadge(penalty)}
+            </td>
+            <td class="px-6 py-4">
+                <div class="max-w-xs">
+                    ${penalty.is_excused && penalty.excuse_reason 
+                        ? `<p class="text-sm text-gray-600 truncate" title="${penalty.excuse_reason}">${penalty.excuse_reason}</p>`
+                        : penalty.is_waived && penalty.waive_reason
+                        ? `<p class="text-sm text-gray-600 truncate" title="${penalty.waive_reason}">${penalty.waive_reason}</p>`
+                        : '<span class="text-gray-400">-</span>'
+                    }
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                    ${!penalty.is_excused && !penalty.is_waived 
+                        ? `
+                        <button onclick="openExcuseModal('${penalty.id}')" 
+                            class="text-blue-600 hover:text-blue-800" title="Sabablash">
+                            <i class="fas fa-check-circle"></i>
+                        </button>
+                        <button onclick="openWaiveModal('${penalty.id}')" 
+                            class="text-yellow-600 hover:text-yellow-800" title="Bekor qilish">
+                            <i class="fas fa-ban"></i>
+                        </button>
+                        `
+                        : penalty.is_excused
+                        ? `
+                        <button onclick="unexcusePenalty('${penalty.id}')" 
+                            class="text-orange-600 hover:text-orange-800" title="Sababni bekor qilish">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                        `
+                        : `
+                        <button onclick="restorePenalty('${penalty.id}')" 
+                            class="text-green-600 hover:text-green-800" title="Tiklash">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                        `
+                    }
+                    ${penalty.penalty_type === 'manual' 
+                        ? `
+                        <button onclick="deletePenalty('${penalty.id}')" 
+                            class="text-red-600 hover:text-red-800" title="O'chirish">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        `
+                        : ''
+                    }
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    
+    // Update checkboxes
+    updateCheckboxes();
+}
+
+function getPenaltyStatusBadge(penalty) {
+    if (penalty.is_excused) {
+        return '<span class="badge badge-info"><i class="fas fa-heart mr-1"></i>Sababli</span>';
+    } else if (penalty.is_waived) {
+        return '<span class="badge badge-secondary"><i class="fas fa-ban mr-1"></i>Bekor qilingan</span>';
+    } else {
+        return '<span class="badge badge-danger"><i class="fas fa-exclamation-triangle mr-1"></i>Faol</span>';
+    }
+}
+
+function updateStats() {
+    const total = penalties.length;
+    const totalAmount = penalties.reduce((sum, p) => sum + p.amount, 0);
+    
+    const active = penalties.filter(p => !p.is_waived && !p.is_excused);
+    const activeAmount = active.reduce((sum, p) => sum + p.amount, 0);
+    
+    const excused = penalties.filter(p => p.is_excused);
+    const excusedAmount = excused.reduce((sum, p) => sum + p.amount, 0);
+    
+    const waived = penalties.filter(p => p.is_waived);
+    const waivedAmount = waived.reduce((sum, p) => sum + p.amount, 0);
+    
+    document.getElementById('totalPenalties').textContent = total;
+    document.getElementById('totalPenaltyAmount').textContent = formatCurrency(totalAmount);
+    
+    document.getElementById('activePenalties').textContent = active.length;
+    document.getElementById('activePenaltyAmount').textContent = formatCurrency(activeAmount);
+    
+    document.getElementById('excusedPenalties').textContent = excused.length;
+    document.getElementById('excusedPenaltyAmount').textContent = formatCurrency(excusedAmount);
+    
+    document.getElementById('waivedPenalties').textContent = waived.length;
+    document.getElementById('waivedPenaltyAmount').textContent = formatCurrency(waivedAmount);
+    
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('showingCount').textContent = penalties.length;
+}
+
+function renderPagination(pagination) {
+    if (!pagination) return;
+    
+    const container = document.getElementById('paginationContainer');
+    const pages = [];
+    
+    if (pagination.page > 1) {
+        pages.push(`<button onclick="changePage(${pagination.page - 1})" class="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+            <i class="fas fa-chevron-left"></i>
+        </button>`);
+    }
+    
+    for (let i = 1; i <= pagination.pages; i++) {
+        if (i === pagination.page) {
+            pages.push(`<button class="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium">${i}</button>`);
+        } else if (i === 1 || i === pagination.pages || (i >= pagination.page - 1 && i <= pagination.page + 1)) {
+            pages.push(`<button onclick="changePage(${i})" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">${i}</button>`);
+        } else if (i === pagination.page - 2 || i === pagination.page + 2) {
+            pages.push(`<span class="px-2">...</span>`);
+        }
+    }
+    
+    if (pagination.page < pagination.pages) {
+        pages.push(`<button onclick="changePage(${pagination.page + 1})" class="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+            <i class="fas fa-chevron-right"></i>
+        </button>`);
+    }
+    
+    container.innerHTML = pages.join('');
+}
+
+function changePage(page) {
+    currentPage = page;
+    loadPenalties();
+}
+
+// Modal functions
+function openAddPenaltyModal() {
+    document.getElementById('addPenaltyForm').reset();
+    document.getElementById('penaltyDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('addPenaltyModal').classList.remove('hidden');
+}
+
+function closeAddPenaltyModal() {
+    document.getElementById('addPenaltyModal').classList.add('hidden');
+}
+
+function openExcuseModal(penaltyId) {
+    document.getElementById('excusePenaltyId').value = penaltyId;
+    document.getElementById('excuseReason').value = '';
+    document.getElementById('excuseModal').classList.remove('hidden');
+}
+
+function closeExcuseModal() {
+    document.getElementById('excuseModal').classList.add('hidden');
+}
+
+function openWaiveModal(penaltyId) {
+    document.getElementById('waivePenaltyId').value = penaltyId;
+    document.getElementById('waiveReason').value = '';
+    document.getElementById('waiveModal').classList.remove('hidden');
+}
+
+function closeWaiveModal() {
+    document.getElementById('waiveModal').classList.add('hidden');
+}
+
+function bulkExcuseModal() {
+    document.getElementById('bulkExcuseForm').reset();
+    document.getElementById('bulkExcuseDate').value = new Date().toISOString().split('T')[0];
+    
+    // Fill employees checkboxes
+    const container = document.getElementById('bulkExcuseEmployees');
+    container.innerHTML = employees.map(e => `
+        <label class="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+            <input type="checkbox" class="rounded bulk-employee-checkbox" value="${e.id}">
+            <span class="text-sm">${e.full_name} (${e.employee_no})</span>
+        </label>
+    `).join('');
+    
+    document.getElementById('bulkExcuseModal').classList.remove('hidden');
+}
+
+function closeBulkExcuseModal() {
+    document.getElementById('bulkExcuseModal').classList.add('hidden');
+}
+
+// Form submissions
+document.getElementById('addPenaltyForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const data = {
+        employee_id: document.getElementById('penaltyEmployeeId').value,
+        amount: parseFloat(document.getElementById('penaltyAmount').value),
+        date: document.getElementById('penaltyDate').value,
+        reason: document.getElementById('penaltyReason').value
+    };
+    
+    showLoading();
+    
+    try {
+        await API.penalties.create(data);
+        showNotification('Jarima muvaffaqiyatli qo\'shildi', 'success');
+        closeAddPenaltyModal();
+        loadPenalties();
+    } catch (error) {
+        console.error('Error creating penalty:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
+document.getElementById('excuseForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const penaltyId = document.getElementById('excusePenaltyId').value;
+    const reason = document.getElementById('excuseReason').value;
+    
+    showLoading();
+    
+    try {
+        await API.penalties.excuse(penaltyId, { reason });
+        showNotification('Jarima muvaffaqiyatli sabablandi', 'success');
+        closeExcuseModal();
+        loadPenalties();
+    } catch (error) {
+        console.error('Error excusing penalty:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
+document.getElementById('waiveForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const penaltyId = document.getElementById('waivePenaltyId').value;
+    const reason = document.getElementById('waiveReason').value;
+    
+    showLoading();
+    
+    try {
+        await API.penalties.waive(penaltyId, { reason });
+        showNotification('Jarima bekor qilindi', 'success');
+        closeWaiveModal();
+        loadPenalties();
+    } catch (error) {
+        console.error('Error waiving penalty:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
+document.getElementById('bulkExcuseForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const date = document.getElementById('bulkExcuseDate').value;
+    const reason = document.getElementById('bulkExcuseReason').value;
+    
+    const checkboxes = document.querySelectorAll('.bulk-employee-checkbox:checked');
+    const employeeIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    const data = {
+        date,
+        reason
+    };
+    
+    if (employeeIds.length > 0) {
+        data.employee_ids = employeeIds;
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await API.penalties.bulkExcuse(data);
+        showNotification(`${response.excused_count} ta jarima sabablandi`, 'success');
+        closeBulkExcuseModal();
+        loadPenalties();
+    } catch (error) {
+        console.error('Error bulk excusing:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
+async function unexcusePenalty(penaltyId) {
+    if (!confirm('Sababni bekor qilmoqchimisiz?')) return;
+    
+    showLoading();
+    
+    try {
+        await API.penalties.unexcuse(penaltyId);
+        showNotification('Sabab bekor qilindi', 'success');
+        loadPenalties();
+    } catch (error) {
+        console.error('Error unexcusing penalty:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function restorePenalty(penaltyId) {
+    if (!confirm('Jarimani tiklamoqchimisiz?')) return;
+    
+    showLoading();
+    
+    try {
+        await API.penalties.restore(penaltyId);
+        showNotification('Jarima tiklandi', 'success');
+        loadPenalties();
+    } catch (error) {
+        console.error('Error restoring penalty:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function deletePenalty(penaltyId) {
+    if (!confirm('Jarimani o\'chirmoqchimisiz?')) return;
+    
+    showLoading();
+    
+    try {
+        await API.penalties.delete(penaltyId);
+        showNotification('Jarima o\'chirildi', 'success');
+        loadPenalties();
+    } catch (error) {
+        console.error('Error deleting penalty:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Checkbox handling
+function updateCheckboxes() {
+    document.querySelectorAll('.penalty-checkbox').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                selectedPenalties.push(e.target.value);
+            } else {
+                selectedPenalties = selectedPenalties.filter(id => id !== e.target.value);
+            }
+            updateBulkActionsBtn();
+        });
+    });
+}
+
+function selectAll() {
+    const allCheckbox = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.penalty-checkbox');
+    
+    checkboxes.forEach(cb => {
+        cb.checked = !allCheckbox.checked;
+    });
+    
+    allCheckbox.checked = !allCheckbox.checked;
+    
+    if (allCheckbox.checked) {
+        selectedPenalties = penalties.map(p => p.id);
+    } else {
+        selectedPenalties = [];
+    }
+    
+    updateBulkActionsBtn();
+}
+
+function updateBulkActionsBtn() {
+    const btn = document.getElementById('bulkActionsBtn');
+    btn.disabled = selectedPenalties.length === 0;
+    btn.textContent = selectedPenalties.length > 0 
+        ? `Ommaviy amallar (${selectedPenalties.length})` 
+        : 'Ommaviy amallar';
+}
+
+function bulkActions() {
+    if (selectedPenalties.length === 0) return;
+    
+    const actions = [
+        { label: 'Sabablash', action: () => bulkExcuseSelected() },
+        { label: 'Bekor qilish', action: () => bulkWaiveSelected() }
+    ];
+    
+    // Simple action menu (you can enhance this)
+    const action = confirm('Tanlangan jarimalarni sabablashni xohlaysizmi?\nOK - Sabablash\nCancel - Bekor qilish');
+    
+    if (action) {
+        bulkExcuseSelected();
+    } else {
+        bulkWaiveSelected();
+    }
+}
+
+async function bulkExcuseSelected() {
+    const reason = prompt('Sabab kiriting:');
+    if (!reason) return;
+    
+    showLoading();
+    
+    try {
+        const response = await API.penalties.bulkExcuse({
+            penalty_ids: selectedPenalties,
+            reason
+        });
+        
+        showNotification(`${response.excused_count} ta jarima sabablandi`, 'success');
+        selectedPenalties = [];
+        loadPenalties();
+    } catch (error) {
+        console.error('Error bulk excusing:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function bulkWaiveSelected() {
+    const reason = prompt('Bekor qilish sababini kiriting:');
+    if (!reason) return;
+    
+    showLoading();
+    
+    try {
+        const response = await API.penalties.bulkWaive({
+            penalty_ids: selectedPenalties,
+            reason
+        });
+        
+        showNotification(`${response.waived_count} ta jarima bekor qilindi`, 'success');
+        selectedPenalties = [];
+        loadPenalties();
+    } catch (error) {
+        console.error('Error bulk waiving:', error);
+        showNotification('Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Filters
+document.getElementById('searchInput').addEventListener('input', debounce(() => {
+    currentPage = 1;
+    loadPenalties();
+}, 500));
+
+document.getElementById('startDate').addEventListener('change', () => {
+    currentPage = 1;
+    loadPenalties();
+});
+
+document.getElementById('endDate').addEventListener('change', () => {
+    currentPage = 1;
+    loadPenalties();
+});
+
+document.getElementById('statusFilter').addEventListener('change', () => {
+    currentPage = 1;
+    loadPenalties();
+});
+
+document.getElementById('employeeFilter').addEventListener('change', () => {
+    currentPage = 1;
+    loadPenalties();
+});
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    // Set default date range (current month)
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('endDate').value = lastDay.toISOString().split('T')[0];
+    
+    loadEmployees();
+    loadPenalties();
+});
+</script>
+{% endblock %}

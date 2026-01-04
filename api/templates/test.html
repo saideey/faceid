@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test - Davomat Tizimi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .section h2 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 100%;
+            margin: 5px 0;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 API Test & Debug Panel</h1>
+        <p style="color: #666; margin-bottom: 20px;">Backend ulanishini tekshirish va debug qilish</p>
+
+        <!-- Health Check -->
+        <div class="section">
+            <h2>1. Backend Health Check</h2>
+            <button onclick="testHealth()">Test Health</button>
+            <div id="healthResult"></div>
+        </div>
+
+        <!-- API Root -->
+        <div class="section">
+            <h2>2. API Root Test</h2>
+            <button onclick="testApiRoot()">Test API Root</button>
+            <div id="apiRootResult"></div>
+        </div>
+
+        <!-- Login Test -->
+        <div class="section">
+            <h2>3. Login Test</h2>
+            <div class="grid">
+                <div>
+                    <label>Email:</label>
+                    <input type="email" id="loginEmail" value="admin@davomat.uz" placeholder="admin@davomat.uz">
+                </div>
+                <div>
+                    <label>Password:</label>
+                    <input type="password" id="loginPassword" value="admin123" placeholder="admin123">
+                </div>
+            </div>
+            <button onclick="testLogin()">Test Login (Super Admin)</button>
+            <button onclick="testCompanyLogin()">Test Login (Company)</button>
+            <div id="loginResult"></div>
+        </div>
+
+        <!-- Token Info -->
+        <div class="section">
+            <h2>4. Current Token</h2>
+            <button onclick="showToken()">Show Token</button>
+            <button onclick="clearToken()">Clear Token</button>
+            <div id="tokenResult"></div>
+        </div>
+
+        <!-- Employees Test -->
+        <div class="section">
+            <h2>5. Test API Endpoints (Requires Login)</h2>
+            <button onclick="testEmployees()">Test /api/employees</button>
+            <button onclick="testBranches()">Test /api/branches</button>
+            <button onclick="testDepartments()">Test /api/departments</button>
+            <div id="endpointResult"></div>
+        </div>
+
+        <!-- Console Logs -->
+        <div class="section">
+            <h2>6. Console Logs</h2>
+            <div id="console" style="background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 6px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Intercept console.log
+        const originalLog = console.log;
+        const originalError = console.error;
+        const consoleDiv = document.getElementById('console');
+
+        function addToConsole(message, type = 'log') {
+            const time = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : '#00ff00';
+            consoleDiv.innerHTML += `<div style="color: ${color}; margin: 2px 0;">[${time}] ${message}</div>`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToConsole(args.join(' '), 'log');
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToConsole(args.join(' '), 'error');
+        };
+
+        // Test functions
+        async function testHealth() {
+            const result = document.getElementById('healthResult');
+            result.innerHTML = '<div class="status info">Testing...</div>';
+
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+
+                console.log('Health check response:', data);
+
+                result.innerHTML = `
+                    <div class="status success">✅ Backend ishlamoqda!</div>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('Health check failed:', error);
+                result.innerHTML = `
+                    <div class="status error">❌ Backend ishlamayapti!</div>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+
+        async function testApiRoot() {
+            const result = document.getElementById('apiRootResult');
+            result.innerHTML = '<div class="status info">Testing...</div>';
+
+            try {
+                const response = await fetch('/api');
+                const data = await response.json();
+
+                console.log('API root response:', data);
+
+                result.innerHTML = `
+                    <div class="status success">✅ API ishlamoqda!</div>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('API root failed:', error);
+                result.innerHTML = `
+                    <div class="status error">❌ API ishlamayapti!</div>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+
+        async function testLogin() {
+            const result = document.getElementById('loginResult');
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            result.innerHTML = '<div class="status info">Logging in...</div>';
+
+            try {
+                const response = await fetch('/api/superadmin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                console.log('Login response:', data);
+
+                if (response.ok && (data.success || data.token || (data.data && data.data.token))) {
+                    // Handle different response formats
+                    const token = data.token || (data.data && data.data.token);
+                    const user = data.user || data.super_admin || (data.data && data.data.user);
+
+                    if (token) {
+                        localStorage.setItem('token', token);
+                        localStorage.setItem('user', JSON.stringify(user));
+
+                        result.innerHTML = `
+                            <div class="status success">✅ Login muvaffaqiyatli!</div>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                            <p style="margin-top: 10px;">Token saqlandi. Endi boshqa endpoint'larni test qilishingiz mumkin.</p>
+                        `;
+                    } else {
+                        throw new Error('Token not found in response');
+                    }
+                } else {
+                    result.innerHTML = `
+                        <div class="status error">❌ Login failed!</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                console.error('Login failed:', error);
+                result.innerHTML = `
+                    <div class="status error">❌ Login xato!</div>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+
+        async function testCompanyLogin() {
+            const result = document.getElementById('loginResult');
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            result.innerHTML = '<div class="status info">Logging in...</div>';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                console.log('Company login response:', data);
+
+                if (response.ok && (data.success || data.token || (data.data && data.data.token))) {
+                    // Handle different response formats
+                    const token = data.token || (data.data && data.data.token);
+                    const user = data.user || (data.data && data.data.user);
+
+                    if (token) {
+                        localStorage.setItem('token', token);
+                        localStorage.setItem('user', JSON.stringify(user));
+
+                        result.innerHTML = `
+                            <div class="status success">✅ Company login muvaffaqiyatli!</div>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        `;
+                    } else {
+                        throw new Error('Token not found in response');
+                    }
+                } else {
+                    result.innerHTML = `
+                        <div class="status error">❌ Company login failed!</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                console.error('Company login failed:', error);
+                result.innerHTML = `
+                    <div class="status error">❌ Login xato!</div>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+
+        function showToken() {
+            const result = document.getElementById('tokenResult');
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+
+            if (token) {
+                result.innerHTML = `
+                    <div class="status success">Token mavjud</div>
+                    <pre>Token: ${token.substring(0, 50)}...
+User: ${user}</pre>
+                `;
+            } else {
+                result.innerHTML = `<div class="status error">Token yo'q - Login qiling!</div>`;
+            }
+        }
+
+        function clearToken() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            document.getElementById('tokenResult').innerHTML = `<div class="status info">Token o'chirildi</div>`;
+        }
+
+        async function testEmployees() {
+            await testEndpoint('/api/employees?per_page=10');
+        }
+
+        async function testBranches() {
+            await testEndpoint('/api/branches?per_page=10');
+        }
+
+        async function testDepartments() {
+            await testEndpoint('/api/departments?per_page=10');
+        }
+
+        async function testEndpoint(endpoint) {
+            const result = document.getElementById('endpointResult');
+            const token = localStorage.getItem('token');
+
+            if (!token) {
+                result.innerHTML = `<div class="status error">❌ Avval login qiling!</div>`;
+                return;
+            }
+
+            result.innerHTML = `<div class="status info">Testing ${endpoint}...</div>`;
+
+            try {
+                const response = await fetch(endpoint, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                console.log(`${endpoint} response:`, data);
+
+                if (response.ok) {
+                    result.innerHTML = `
+                        <div class="status success">✅ ${endpoint} ishlayapti!</div>
+                        <pre>${JSON.stringify(data, null, 2).substring(0, 500)}...</pre>
+                    `;
+                } else {
+                    result.innerHTML = `
+                        <div class="status error">❌ ${endpoint} xato!</div>
+                        <pre>Status: ${response.status}
+${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                console.error(`${endpoint} failed:`, error);
+                result.innerHTML = `
+                    <div class="status error">❌ ${endpoint} xato!</div>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+
+        // Auto test on load
+        console.log('🚀 Debug panel loaded');
+        console.log('Backend URL:', window.location.origin);
+    </script>
+</body>
+</html>

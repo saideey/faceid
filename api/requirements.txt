@@ -1,0 +1,11 @@
+Flask==3.0.0
+Flask-CORS==4.0.0
+SQLAlchemy==2.0.23
+psycopg2-binary==2.9.9
+PyJWT==2.8.0
+bcrypt==4.1.2
+python-dotenv==1.0.0
+pytz==2023.3
+openpyxl==3.1.2
+Werkzeug==3.0.1
+XlsxWriter==3.1.9

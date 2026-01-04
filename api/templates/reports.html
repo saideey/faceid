@@ -1,0 +1,542 @@
+{% extends "base.html" %}
+
+{% block title %}Hisobotlar - Davomat Tizimi{% endblock %}
+{% block page_title %}Hisobotlar{% endblock %}
+{% block page_subtitle %}Davomat va oylik hisobotlari{% endblock %}
+
+{% block content %}
+<!-- Report Type Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <button onclick="switchReport('attendance')" id="attendanceCard"
+        class="report-card active bg-gradient-to-br from-blue-500 to-blue-600 text-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-1">
+        <div class="flex items-center justify-between mb-4">
+            <i class="fas fa-calendar-check text-5xl opacity-80"></i>
+            <i class="fas fa-arrow-right text-2xl"></i>
+        </div>
+        <h3 class="text-2xl font-bold mb-2">Davomat hisoboti</h3>
+        <p class="opacity-90">Kunlik davomat statistikasi va grafigi</p>
+    </button>
+
+    <button onclick="switchReport('salary')" id="salaryCard"
+        class="report-card bg-gradient-to-br from-green-500 to-green-600 text-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-1">
+        <div class="flex items-center justify-between mb-4">
+            <i class="fas fa-money-bill-wave text-5xl opacity-80"></i>
+            <i class="fas fa-arrow-right text-2xl"></i>
+        </div>
+        <h3 class="text-2xl font-bold mb-2">Oylik hisoboti</h3>
+        <p class="opacity-90">Maosh, jarima va bonuslar</p>
+    </button>
+</div>
+
+<!-- Attendance Report -->
+<div id="attendanceReport" class="report-section">
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div>
+                <label class="form-label">Boshlanish</label>
+                <input type="date" id="attendanceStartDate" class="form-input">
+            </div>
+            <div>
+                <label class="form-label">Tugash</label>
+                <input type="date" id="attendanceEndDate" class="form-input">
+            </div>
+            <div>
+                <label class="form-label">Filial</label>
+                <select id="attendanceBranch" class="form-input">
+                    <option value="">Barchasi</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button onclick="loadAttendanceReport()" class="btn-primary w-full">
+                    <i class="fas fa-sync mr-2"></i>
+                    Yangilash
+                </button>
+            </div>
+            <div class="flex items-end">
+                <button onclick="exportAttendanceReport()" class="btn-secondary w-full">
+                    <i class="fas fa-file-excel mr-2"></i>
+                    Excel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+        <div class="stat-card bg-white p-4">
+            <p class="text-xs text-gray-600 mb-1">Jami yozuvlar</p>
+            <p class="text-2xl font-bold text-blue-600" id="attendanceTotalRecords">0</p>
+        </div>
+        <div class="stat-card bg-white p-4">
+            <p class="text-xs text-gray-600 mb-1">Kech qolganlar</p>
+            <p class="text-2xl font-bold text-orange-600" id="attendanceTotalLate">0</p>
+        </div>
+        <div class="stat-card bg-white p-4">
+            <p class="text-xs text-gray-600 mb-1">Kech qolish %</p>
+            <p class="text-2xl font-bold text-red-600" id="attendanceLatePercentage">0%</p>
+        </div>
+        <div class="stat-card bg-white p-4">
+            <p class="text-xs text-gray-600 mb-1">O'z vaqtida</p>
+            <p class="text-2xl font-bold text-green-600" id="attendanceOnTime">0</p>
+        </div>
+        <div class="stat-card bg-white p-4">
+            <p class="text-xs text-gray-600 mb-1">Jami soatlar</p>
+            <p class="text-2xl font-bold text-purple-600" id="attendanceTotalHours">0h</p>
+        </div>
+        <div class="stat-card bg-white p-4">
+            <p class="text-xs text-gray-600 mb-1">O'rtacha/kun</p>
+            <p class="text-2xl font-bold text-indigo-600" id="attendanceAvgHours">0h</p>
+        </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Kunlik davomat grafigi</h3>
+        <div style="height: 300px; position: relative;">
+            <canvas id="attendanceChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Salary Report -->
+<div id="salaryReport" class="report-section hidden">
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="form-label">Oy</label>
+                <select id="salaryMonth" class="form-input">
+                    <option value="1">Yanvar</option>
+                    <option value="2">Fevral</option>
+                    <option value="3">Mart</option>
+                    <option value="4">Aprel</option>
+                    <option value="5">May</option>
+                    <option value="6">Iyun</option>
+                    <option value="7">Iyul</option>
+                    <option value="8">Avgust</option>
+                    <option value="9">Sentabr</option>
+                    <option value="10">Oktabr</option>
+                    <option value="11">Noyabr</option>
+                    <option value="12">Dekabr</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Yil</label>
+                <select id="salaryYear" class="form-input"></select>
+            </div>
+            <div class="flex items-end">
+                <button onclick="loadSalaryReport()" class="btn-primary w-full">
+                    <i class="fas fa-sync mr-2"></i>
+                    Yangilash
+                </button>
+            </div>
+            <div class="flex items-end">
+                <button onclick="window.location.href='/salary'" class="btn-secondary w-full">
+                    <i class="fas fa-calculator mr-2"></i>
+                    Batafsil
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div class="stat-card bg-white p-4">
+            <p class="text-xs text-gray-600 mb-1">Xodimlar</p>
+            <p class="text-2xl font-bold text-blue-600" id="salaryTotalEmployees">0</p>
+        </div>
+        <div class="stat-card bg-white p-4">
+            <p class="text-xs text-gray-600 mb-1">Asosiy oyliklar</p>
+            <p class="text-xl font-bold text-green-600" id="salaryBaseSalary">0</p>
+        </div>
+        <div class="stat-card bg-white p-4">
+            <p class="text-xs text-gray-600 mb-1">Jarimalar</p>
+            <p class="text-xl font-bold text-red-600" id="salaryPenalties">0</p>
+        </div>
+        <div class="stat-card bg-white p-4">
+            <p class="text-xs text-gray-600 mb-1">Bonuslar</p>
+            <p class="text-xl font-bold text-purple-600" id="salaryBonuses">0</p>
+        </div>
+        <div class="stat-card bg-white p-4">
+            <p class="text-xs text-gray-600 mb-1">Sof to'lov</p>
+            <p class="text-xl font-bold text-indigo-600" id="salaryNetPayroll">0</p>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Pie Chart -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Taqsimot</h3>
+            <div style="height: 280px; position: relative;">
+                <canvas id="salaryChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Additional Stats -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Qo'shimcha ma'lumot</h3>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span class="text-sm text-gray-600">O'rtacha oylik</span>
+                    <span class="text-lg font-bold text-blue-600" id="salaryAvgSalary">0</span>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span class="text-sm text-gray-600">Jarima/xodim</span>
+                    <span class="text-lg font-bold text-red-600" id="salaryPenaltyPerEmployee">0</span>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span class="text-sm text-gray-600">Bonus/xodim</span>
+                    <span class="text-lg font-bold text-green-600" id="salaryBonusPerEmployee">0</span>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <span class="text-sm text-gray-700 font-medium">Jarima foizi</span>
+                    <span class="text-lg font-bold text-blue-700" id="salaryPenaltyPercent">0%</span>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                    <span class="text-sm text-gray-700 font-medium">Bonus foizi</span>
+                    <span class="text-lg font-bold text-green-700" id="salaryBonusPercent">0%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.report-card {
+    border: 2px solid transparent;
+}
+
+.report-card.active {
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: scale(1.02);
+}
+
+.report-section {
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let attendanceChart = null;
+let salaryChart = null;
+let currentReport = 'attendance';
+
+// Initialize
+function initializeReports() {
+    // Set default dates
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    document.getElementById('attendanceStartDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('attendanceEndDate').value = today.toISOString().split('T')[0];
+
+    // Set current month/year
+    document.getElementById('salaryMonth').value = today.getMonth() + 1;
+
+    const yearSelect = document.getElementById('salaryYear');
+    const currentYear = today.getFullYear();
+    for (let i = currentYear; i >= currentYear - 3; i--) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = i;
+        if (i === currentYear) option.selected = true;
+        yearSelect.appendChild(option);
+    }
+
+    // Load branches
+    loadBranches();
+
+    // Load default report
+    loadAttendanceReport();
+}
+
+async function loadBranches() {
+    try {
+        const response = await API.branches.list({ per_page: 100 });
+        const branches = response.branches || response.data || response || [];
+
+        const select = document.getElementById('attendanceBranch');
+        branches.forEach(branch => {
+            const option = document.createElement('option');
+            option.value = branch.id;
+            option.textContent = branch.name;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading branches:', error);
+    }
+}
+
+function switchReport(type) {
+    currentReport = type;
+
+    // Update cards
+    document.querySelectorAll('.report-card').forEach(card => card.classList.remove('active'));
+    document.getElementById(type + 'Card').classList.add('active');
+
+    // Update sections
+    document.getElementById('attendanceReport').classList.toggle('hidden', type !== 'attendance');
+    document.getElementById('salaryReport').classList.toggle('hidden', type !== 'salary');
+
+    // Load data
+    if (type === 'attendance') {
+        loadAttendanceReport();
+    } else {
+        loadSalaryReport();
+    }
+}
+
+async function loadAttendanceReport() {
+    showLoading();
+
+    try {
+        const params = {
+            start_date: document.getElementById('attendanceStartDate').value,
+            end_date: document.getElementById('attendanceEndDate').value,
+            branch_id: document.getElementById('attendanceBranch').value
+        };
+
+        console.log('Loading attendance report with params:', params);
+
+        const response = await API.reports.attendanceData(params);
+
+        console.log('Attendance report response:', response);
+
+        // Check if response has data (backend returns data directly in success case)
+        const data = response.data || response;
+
+        if (!data || !data.summary) {
+            throw new Error(response.error || 'Failed to load report');
+        }
+
+        // Update stats
+        const summary = data.summary;
+        const onTimeCount = summary.total_records - summary.total_late;
+
+        document.getElementById('attendanceTotalRecords').textContent = summary.total_records;
+        document.getElementById('attendanceTotalLate').textContent = summary.total_late;
+        document.getElementById('attendanceLatePercentage').textContent = summary.late_percentage + '%';
+        document.getElementById('attendanceOnTime').textContent = onTimeCount;
+        document.getElementById('attendanceTotalHours').textContent = summary.total_work_hours.toFixed(0) + 'h';
+        document.getElementById('attendanceAvgHours').textContent = summary.average_work_hours.toFixed(1) + 'h';
+
+        // Update chart
+        renderAttendanceChart(data.daily);
+
+        showNotification('Hisobot yuklandi', 'success');
+
+    } catch (error) {
+        console.error('Error loading attendance report:', error);
+        showNotification('Hisobot yuklashda xatolik: ' + (error.message || error), 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function renderAttendanceChart(dailyData) {
+    const ctx = document.getElementById('attendanceChart');
+
+    if (attendanceChart) {
+        attendanceChart.destroy();
+    }
+
+    attendanceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dailyData.map(d => d.date.split('-').slice(1).join('.')),
+            datasets: [
+                {
+                    label: 'Ishda',
+                    data: dailyData.map(d => d.present),
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Kech qolgan',
+                    data: dailyData.map(d => d.late),
+                    backgroundColor: 'rgba(249, 115, 22, 0.8)',
+                    borderColor: 'rgba(249, 115, 22, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 10,
+                        font: { size: 11 }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        font: { size: 10 }
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: { size: 10 }
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function loadSalaryReport() {
+    showLoading();
+
+    try {
+        const params = {
+            month: document.getElementById('salaryMonth').value,
+            year: document.getElementById('salaryYear').value
+        };
+
+        console.log('Loading salary report with params:', params);
+
+        const response = await API.reports.salaryData(params);
+
+        console.log('Salary report response:', response);
+
+        // Check if response has data (backend returns data directly in success case)
+        const data = response.data || response;
+
+        if (!data || !data.summary) {
+            throw new Error(response.error || 'Failed to load report');
+        }
+
+        // Update stats
+        const summary = data.summary;
+        document.getElementById('salaryTotalEmployees').textContent = summary.total_employees;
+        document.getElementById('salaryBaseSalary').textContent = formatCurrency(summary.total_base_salary);
+        document.getElementById('salaryPenalties').textContent = formatCurrency(summary.total_penalties);
+        document.getElementById('salaryBonuses').textContent = formatCurrency(summary.total_bonuses);
+
+        // Update chart
+        renderSalaryChart(summary);
+
+        showNotification('Hisobot yuklandi', 'success');
+
+    } catch (error) {
+        console.error('Error loading salary report:', error);
+        showNotification('Hisobot yuklashda xatolik: ' + (error.message || error), 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function renderSalaryChart(summary) {
+    const ctx = document.getElementById('salaryChart');
+
+    if (salaryChart) {
+        salaryChart.destroy();
+    }
+
+    salaryChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Asosiy oylik', 'Jarimalar', 'Bonuslar'],
+            datasets: [{
+                data: [
+                    summary.total_base_salary,
+                    summary.total_penalties,
+                    summary.total_bonuses
+                ],
+                backgroundColor: [
+                    'rgba(34, 197, 94, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(168, 85, 247, 0.8)'
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 8,
+                        font: { size: 11 }
+                    }
+                }
+            }
+        }
+    });
+
+    // Calculate and update additional stats
+    const avgSalary = summary.total_employees > 0
+        ? summary.total_base_salary / summary.total_employees
+        : 0;
+
+    const penaltyPerEmp = summary.total_employees > 0
+        ? summary.total_penalties / summary.total_employees
+        : 0;
+
+    const bonusPerEmp = summary.total_employees > 0
+        ? summary.total_bonuses / summary.total_employees
+        : 0;
+
+    const penaltyPercent = summary.total_base_salary > 0
+        ? (summary.total_penalties / summary.total_base_salary * 100)
+        : 0;
+
+    const bonusPercent = summary.total_base_salary > 0
+        ? (summary.total_bonuses / summary.total_base_salary * 100)
+        : 0;
+
+    document.getElementById('salaryAvgSalary').textContent = formatCurrency(avgSalary);
+    document.getElementById('salaryPenaltyPerEmployee').textContent = formatCurrency(penaltyPerEmp);
+    document.getElementById('salaryBonusPerEmployee').textContent = formatCurrency(bonusPerEmp);
+    document.getElementById('salaryPenaltyPercent').textContent = penaltyPercent.toFixed(1) + '%';
+    document.getElementById('salaryBonusPercent').textContent = bonusPercent.toFixed(1) + '%';
+    document.getElementById('salaryNetPayroll').textContent = formatCurrency(summary.net_payroll);
+}
+
+async function exportAttendanceReport() {
+    try {
+        const params = {
+            start_date: document.getElementById('attendanceStartDate').value,
+            end_date: document.getElementById('attendanceEndDate').value,
+            branch_id: document.getElementById('attendanceBranch').value
+        };
+
+        showNotification('Excel fayl yuklanmoqda...', 'info');
+        await API.reports.exportAttendance(params);
+        showNotification('Excel fayl muvaffaqiyatli yuklandi!', 'success');
+
+    } catch (error) {
+        console.error('Export error:', error);
+        showNotification('Excel eksport qilishda xatolik', 'error');
+    }
+}
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', initializeReports);
+</script>
+{% endblock %}

@@ -1,0 +1,64 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: attendance-db
+    ports:
+      - "5435:5432"
+    environment:
+      - POSTGRES_PASSWORD=attendance_pass_2025
+      - POSTGRES_USER=attendance_user
+      - POSTGRES_DB=attendance_system_db
+      - TZ=Asia/Tashkent
+    volumes:
+      - attendance_pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U attendance_user -d attendance_system_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - attendance-network
+
+  api:
+    build: ./api
+    container_name: attendance-api
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql://attendance_user:attendance_pass_2025@db:5432/attendance_system_db
+      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-change-in-production}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - TZ=Asia/Tashkent
+      - BASE_URL=${BASE_URL:-http://localhost:5000}
+      - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL:-admin@attendance.com}
+      - SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD:-Admin@2025!Secure}
+      - DEBUG=False
+    volumes:
+      - ./api/uploads:/app/uploads
+      - ./api/exports:/app/exports
+      - ./api/logs:/app/logs
+      - ./api/static:/app/static
+      - ./api/templates:/app/templates
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - attendance-network
+
+networks:
+  attendance-network:
+    driver: bridge
+
+volumes:
+  attendance_pg_data:
