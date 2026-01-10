@@ -35,6 +35,18 @@
         .sidebar {
             background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
             box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        /* Mobile sidebar hidden by default */
+        @media (max-width: 1023px) {
+            .sidebar {
+                transform: translateX(-100%);
+                z-index: 50;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
         }
 
         .sidebar-item {
@@ -60,6 +72,18 @@
             bottom: 0;
             width: 4px;
             background: #60a5fa;
+        }
+
+        /* Mobile overlay */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 40;
+        }
+        .sidebar-overlay.open {
+            display: block;
         }
 
         /* Cards */
@@ -116,10 +140,12 @@
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto; /* Mobile scroll */
         }
 
         table {
             width: 100%;
+            min-width: 600px; /* Minimum width for mobile scroll */
         }
 
         thead {
@@ -135,6 +161,7 @@
             font-size: 0.875rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            white-space: nowrap;
         }
 
         tbody tr {
@@ -151,6 +178,14 @@
             color: #334155;
         }
 
+        /* Mobile table adjustments */
+        @media (max-width: 640px) {
+            thead th, tbody td {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.75rem;
+            }
+        }
+
         /* Badges */
         .badge {
             display: inline-flex;
@@ -161,6 +196,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.025em;
+            white-space: nowrap;
         }
 
         .badge-success {
@@ -199,6 +235,18 @@
             border-radius: 16px;
             box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
             animation: modalSlideIn 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+            margin: 1rem;
+            width: calc(100% - 2rem);
+            max-width: 600px;
+        }
+
+        @media (min-width: 640px) {
+            .modal-content {
+                margin: 2rem auto;
+                width: auto;
+            }
         }
 
         @keyframes modalSlideIn {
@@ -246,6 +294,13 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
+        @media (max-width: 640px) {
+            .chart-container {
+                height: 250px;
+                padding: 1rem;
+            }
+        }
+
         /* Loading spinner */
         .spinner {
             border: 3px solid #f3f4f6;
@@ -290,6 +345,7 @@
             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
             animation: slideInRight 0.3s ease;
             z-index: 9999;
+            max-width: calc(100% - 2rem);
         }
 
         @keyframes slideInRight {
@@ -317,14 +373,40 @@
             background: linear-gradient(90deg, var(--primary) 0%, #3b82f6 100%);
             transition: width 0.3s ease;
         }
+
+        /* Mobile menu button */
+        .mobile-menu-btn {
+            display: none;
+        }
+
+        @media (max-width: 1023px) {
+            .mobile-menu-btn {
+                display: flex;
+            }
+        }
+
+        /* Main content margin adjustment */
+        @media (max-width: 1023px) {
+            .main-content {
+                margin-left: 0 !important;
+            }
+        }
     </style>
 
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-gray-50">
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
     <!-- Sidebar -->
-    <aside class="sidebar fixed left-0 top-0 h-screen w-64 overflow-y-auto">
+    <aside id="sidebar" class="sidebar fixed left-0 top-0 h-screen w-64 overflow-y-auto">
         <div class="p-6">
+            <!-- Close button for mobile -->
+            <button onclick="toggleSidebar()" class="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
             <!-- Company Logo and Name - Vertical Layout -->
             <div class="flex flex-col items-center mb-8 space-y-3">
                 <!-- Company Logo - Larger -->
@@ -400,14 +482,14 @@
         <!-- User info at bottom -->
         <div class="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-700">
             <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
                     <i class="fas fa-user text-white"></i>
                 </div>
-                <div class="flex-1">
-                    <p class="text-white font-medium text-sm" id="userName">Admin</p>
-                    <p class="text-gray-400 text-xs" id="userEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6a0b0e0703042a0f120b071a060f44090507">[email&#160;protected]</a></p>
+                <div class="flex-1 min-w-0">
+                    <p class="text-white font-medium text-sm truncate" id="userName">Admin</p>
+                    <p class="text-gray-400 text-xs truncate" id="userEmail">admin@example.com</p>
                 </div>
-                <button onclick="logout()" class="text-gray-400 hover:text-white">
+                <button onclick="logout()" class="text-gray-400 hover:text-white flex-shrink-0">
                     <i class="fas fa-sign-out-alt"></i>
                 </button>
             </div>
@@ -415,25 +497,33 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="ml-64 min-h-screen">
+    <main class="main-content lg:ml-64 min-h-screen">
         <!-- Top Header -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
-            <div class="px-8 py-4 flex items-center justify-between">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800">{% block page_title %}Dashboard{% endblock %}</h2>
-                    <p class="text-sm text-gray-500 mt-1">{% block page_subtitle %}Bosh sahifa{% endblock %}</p>
+            <div class="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+                <!-- Mobile menu button + Title -->
+                <div class="flex items-center space-x-4">
+                    <!-- Mobile menu button -->
+                    <button onclick="toggleSidebar()" class="mobile-menu-btn items-center justify-center w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600">
+                        <i class="fas fa-bars text-lg"></i>
+                    </button>
+
+                    <div>
+                        <h2 class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800">{% block page_title %}Dashboard{% endblock %}</h2>
+                        <p class="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1 hidden sm:block">{% block page_subtitle %}Bosh sahifa{% endblock %}</p>
+                    </div>
                 </div>
 
-                <div class="flex items-center space-x-4">
-                    <!-- Current Date/Time -->
-                    <div class="text-right">
-                        <p class="text-sm font-medium text-gray-700" id="currentDate"></p>
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <!-- Current Date/Time - Hidden on small mobile -->
+                    <div class="text-right hidden sm:block">
+                        <p class="text-xs sm:text-sm font-medium text-gray-700" id="currentDate"></p>
                         <p class="text-xs text-gray-500" id="currentTime"></p>
                     </div>
 
                     <!-- Notifications -->
                     <button class="relative p-2 text-gray-600 hover:text-gray-800">
-                        <i class="fas fa-bell text-xl"></i>
+                        <i class="fas fa-bell text-lg sm:text-xl"></i>
                         <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
                     </button>
                 </div>
@@ -441,16 +531,16 @@
         </header>
 
         <!-- Page Content -->
-        <div class="p-8">
+        <div class="p-4 sm:p-6 lg:p-8">
             {% block content %}{% endblock %}
         </div>
     </main>
 
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 flex flex-col items-center">
+        <div class="bg-white rounded-lg p-6 flex flex-col items-center mx-4">
             <div class="spinner mb-4"></div>
-            <p class="text-gray-700 font-medium">Yuklanmoqda...</p>
+            <p class="text-gray-700 font-medium text-sm sm:text-base">Yuklanmoqda...</p>
         </div>
     </div>
 
@@ -459,6 +549,24 @@
 
     <!-- Global Scripts -->
     <script>
+        // Toggle Sidebar for mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('open');
+            document.body.classList.toggle('overflow-hidden');
+        }
+
+        // Close sidebar when clicking a link (mobile)
+        document.querySelectorAll('.sidebar-item').forEach(item => {
+            item.addEventListener('click', () => {
+                if (window.innerWidth < 1024) {
+                    toggleSidebar();
+                }
+            });
+        });
+
         // Update current date and time
         function updateDateTime() {
             const now = new Date();
@@ -468,8 +576,10 @@
                 day: 'numeric',
                 weekday: 'long'
             };
-            document.getElementById('currentDate').textContent = now.toLocaleDateString('uz-UZ', options);
-            document.getElementById('currentTime').textContent = now.toLocaleTimeString('uz-UZ');
+            const dateEl = document.getElementById('currentDate');
+            const timeEl = document.getElementById('currentTime');
+            if (dateEl) dateEl.textContent = now.toLocaleDateString('uz-UZ', options);
+            if (timeEl) timeEl.textContent = now.toLocaleTimeString('uz-UZ');
         }
 
         updateDateTime();
@@ -506,7 +616,7 @@
             notification.innerHTML = `
                 <div class="flex items-center space-x-3">
                     <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle'}"></i>
-                    <p>${message}</p>
+                    <p class="text-sm sm:text-base">${message}</p>
                 </div>
             `;
 
@@ -547,6 +657,17 @@
             const parts = timeString.split(':');
             return `${parts[0]}:${parts[1]}`;
         }
+
+        // Handle window resize - close sidebar on desktop
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 1024) {
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                sidebar.classList.remove('open');
+                overlay.classList.remove('open');
+                document.body.classList.remove('overflow-hidden');
+            }
+        });
     </script>
 
     <!-- API Client -->

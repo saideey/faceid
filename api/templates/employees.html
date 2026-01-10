@@ -4,27 +4,92 @@
 {% block page_title %}Xodimlar{% endblock %}
 {% block page_subtitle %}Barcha xodimlarni boshqarish{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Mobile table - card style on small screens */
+    @media (max-width: 640px) {
+        .table-container table {
+            min-width: auto;
+        }
+
+        .table-container thead {
+            display: none;
+        }
+
+        .table-container tbody tr {
+            display: block;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+        }
+
+        .table-container tbody td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .table-container tbody td:last-child {
+            border-bottom: none;
+        }
+
+        .table-container tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: #64748b;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        /* Hide checkbox column on mobile */
+        .table-container tbody td:first-child {
+            display: none;
+        }
+    }
+
+    /* Fix modal scroll on iOS */
+    .modal-scroll-fix {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Better touch targets for mobile */
+    @media (max-width: 640px) {
+        .btn-primary, .btn-secondary {
+            min-height: 44px;
+            padding: 0.75rem 1rem;
+        }
+
+        .form-input {
+            min-height: 44px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Filters and Actions -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
+    <div class="flex flex-col gap-4">
         <!-- Search and Filters -->
-        <div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="relative">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div class="relative sm:col-span-2 lg:col-span-1">
                 <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                <input type="text" id="searchInput" placeholder="Qidirish (ism, ID, telefon)..."
-                    class="form-input pl-10">
+                <input type="text" id="searchInput" placeholder="Qidirish..."
+                    class="form-input pl-10 text-sm">
             </div>
 
-            <select id="branchFilter" class="form-input">
+            <select id="branchFilter" class="form-input text-sm">
                 <option value="">Barcha filiallar</option>
             </select>
 
-            <select id="departmentFilter" class="form-input">
+            <select id="departmentFilter" class="form-input text-sm">
                 <option value="">Barcha bo'limlar</option>
             </select>
 
-            <select id="statusFilter" class="form-input">
+            <select id="statusFilter" class="form-input text-sm">
                 <option value="">Barcha holatlar</option>
                 <option value="active">Faol</option>
                 <option value="inactive">Nofaol</option>
@@ -33,12 +98,12 @@
         </div>
 
         <!-- Action Buttons -->
-        <div class="flex gap-3">
-            <button onclick="exportEmployees()" class="btn-secondary">
+        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-end">
+            <button onclick="exportEmployees()" class="btn-secondary text-sm order-2 sm:order-1">
                 <i class="fas fa-download mr-2"></i>
                 Eksport
             </button>
-            <button onclick="openAddModal()" class="btn-primary">
+            <button onclick="openAddModal()" class="btn-primary text-sm order-1 sm:order-2">
                 <i class="fas fa-plus mr-2"></i>
                 Xodim qo'shish
             </button>
@@ -47,51 +112,51 @@
 </div>
 
 <!-- Stats Cards -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-    <div class="stat-card p-6">
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6">
+    <div class="stat-card p-4 sm:p-6">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-500 mb-1">Jami xodimlar</p>
-                <p class="text-2xl font-bold text-gray-800" id="totalCount">0</p>
+                <p class="text-xs sm:text-sm text-gray-500 mb-1">Jami xodimlar</p>
+                <p class="text-xl sm:text-2xl font-bold text-gray-800" id="totalCount">0</p>
             </div>
-            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <i class="fas fa-users text-blue-600 text-xl"></i>
+            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-users text-blue-600 text-lg sm:text-xl"></i>
             </div>
         </div>
     </div>
 
-    <div class="stat-card p-6">
+    <div class="stat-card p-4 sm:p-6">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-500 mb-1">Faol</p>
-                <p class="text-2xl font-bold text-green-600" id="activeCount">0</p>
+                <p class="text-xs sm:text-sm text-gray-500 mb-1">Faol</p>
+                <p class="text-xl sm:text-2xl font-bold text-green-600" id="activeCount">0</p>
             </div>
-            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-check-circle text-green-600 text-lg sm:text-xl"></i>
             </div>
         </div>
     </div>
 
-    <div class="stat-card p-6">
+    <div class="stat-card p-4 sm:p-6">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-500 mb-1">Nofaol</p>
-                <p class="text-2xl font-bold text-gray-600" id="inactiveCount">0</p>
+                <p class="text-xs sm:text-sm text-gray-500 mb-1">Nofaol</p>
+                <p class="text-xl sm:text-2xl font-bold text-gray-600" id="inactiveCount">0</p>
             </div>
-            <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                <i class="fas fa-times-circle text-gray-600 text-xl"></i>
+            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-times-circle text-gray-600 text-lg sm:text-xl"></i>
             </div>
         </div>
     </div>
 
-    <div class="stat-card p-6">
+    <div class="stat-card p-4 sm:p-6">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-500 mb-1">O'rtacha oylik</p>
-                <p class="text-2xl font-bold text-purple-600" id="avgSalary">0</p>
+                <p class="text-xs sm:text-sm text-gray-500 mb-1">O'rtacha oylik</p>
+                <p class="text-xl sm:text-2xl font-bold text-purple-600" id="avgSalary">0</p>
             </div>
-            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <i class="fas fa-money-bill-wave text-purple-600 text-xl"></i>
+            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-money-bill-wave text-purple-600 text-lg sm:text-xl"></i>
             </div>
         </div>
     </div>
@@ -122,11 +187,11 @@
     </table>
 
     <!-- Empty State -->
-    <div id="emptyState" class="hidden py-16 text-center">
-        <i class="fas fa-users text-gray-300 text-6xl mb-4"></i>
-        <h3 class="text-xl font-semibold text-gray-700 mb-2">Xodimlar topilmadi</h3>
-        <p class="text-gray-500 mb-6">Yangi xodim qo'shish uchun yuqoridagi tugmani bosing</p>
-        <button onclick="openAddModal()" class="btn-primary">
+    <div id="emptyState" class="hidden py-10 sm:py-16 text-center px-4">
+        <i class="fas fa-users text-gray-300 text-4xl sm:text-6xl mb-4"></i>
+        <h3 class="text-lg sm:text-xl font-semibold text-gray-700 mb-2">Xodimlar topilmadi</h3>
+        <p class="text-sm sm:text-base text-gray-500 mb-6">Yangi xodim qo'shish uchun yuqoridagi tugmani bosing</p>
+        <button onclick="openAddModal()" class="btn-primary text-sm">
             <i class="fas fa-plus mr-2"></i>
             Xodim qo'shish
         </button>
@@ -134,66 +199,66 @@
 </div>
 
 <!-- Pagination -->
-<div class="flex items-center justify-between mt-6">
-    <div class="text-sm text-gray-600">
+<div class="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6">
+    <div class="text-xs sm:text-sm text-gray-600 order-2 sm:order-1">
         Jami <span id="totalEmployees">0</span> ta xodim
     </div>
-    <div class="flex gap-2" id="paginationContainer">
+    <div class="flex gap-1 sm:gap-2 order-1 sm:order-2 overflow-x-auto" id="paginationContainer">
         <!-- Filled by JS -->
     </div>
 </div>
 
 <!-- Add/Edit Employee Modal -->
-<div id="employeeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="sticky top-0 bg-white border-b border-gray-200 px-8 py-6 flex items-center justify-between">
+<div id="employeeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-4xl my-2 sm:my-0">
+        <div class="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-8 py-4 sm:py-6 flex items-center justify-between rounded-t-xl sm:rounded-t-2xl">
             <div>
-                <h2 class="text-2xl font-bold text-gray-800" id="modalTitle">Yangi xodim qo'shish</h2>
-                <p class="text-sm text-gray-500 mt-1">Xodim ma'lumotlarini to'ldiring</p>
+                <h2 class="text-lg sm:text-2xl font-bold text-gray-800" id="modalTitle">Yangi xodim qo'shish</h2>
+                <p class="text-xs sm:text-sm text-gray-500 mt-1 hidden sm:block">Xodim ma'lumotlarini to'ldiring</p>
             </div>
-            <button onclick="closeEmployeeModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-2xl"></i>
+            <button onclick="closeEmployeeModal()" class="text-gray-400 hover:text-gray-600 p-2">
+                <i class="fas fa-times text-xl sm:text-2xl"></i>
             </button>
         </div>
 
-        <form id="employeeForm" class="p-8">
+        <form id="employeeForm" class="p-4 sm:p-8 max-h-[75vh] sm:max-h-[70vh] overflow-y-auto">
             <input type="hidden" id="employeeId">
 
             <!-- Personal Information -->
-            <div class="mb-8">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <div class="mb-6 sm:mb-8">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center">
                     <i class="fas fa-user text-blue-600 mr-2"></i>
                     Shaxsiy ma'lumotlar
                 </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div>
-                        <label class="form-label">F.I.O. <span class="text-red-500">*</span></label>
-                        <input type="text" id="fullName" required class="form-input" placeholder="Ali Valiyev">
+                        <label class="form-label text-sm">F.I.O. <span class="text-red-500">*</span></label>
+                        <input type="text" id="fullName" required class="form-input text-sm" placeholder="Ali Valiyev">
                     </div>
 
                     <div>
-                        <label class="form-label">Xodim ID <span class="text-red-500">*</span></label>
-                        <input type="text" id="employeeNo" required class="form-input" placeholder="001">
+                        <label class="form-label text-sm">Xodim ID <span class="text-red-500">*</span></label>
+                        <input type="text" id="employeeNo" required class="form-input text-sm" placeholder="001">
                     </div>
 
                     <div>
-                        <label class="form-label">Email</label>
-                        <input type="email" id="email" class="form-input" placeholder="ali@example.com">
+                        <label class="form-label text-sm">Email</label>
+                        <input type="email" id="email" class="form-input text-sm" placeholder="ali@example.com">
                     </div>
 
                     <div>
-                        <label class="form-label">Telefon</label>
-                        <input type="tel" id="phone" class="form-input" placeholder="+998901234567">
+                        <label class="form-label text-sm">Telefon</label>
+                        <input type="tel" id="phone" class="form-input text-sm" placeholder="+998901234567">
                     </div>
 
                     <div>
-                        <label class="form-label">Karta raqami</label>
-                        <input type="text" id="cardNo" class="form-input" placeholder="CARD001">
+                        <label class="form-label text-sm">Karta raqami</label>
+                        <input type="text" id="cardNo" class="form-input text-sm" placeholder="CARD001">
                     </div>
 
                     <div>
-                        <label class="form-label">Holat</label>
-                        <select id="status" class="form-input">
+                        <label class="form-label text-sm">Holat</label>
+                        <select id="status" class="form-input text-sm">
                             <option value="active">Faol</option>
                             <option value="inactive">Nofaol</option>
                             <option value="suspended">To'xtatilgan</option>
@@ -203,59 +268,74 @@
             </div>
 
             <!-- Work Information -->
-            <div class="mb-8">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <div class="mb-6 sm:mb-8">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center">
                     <i class="fas fa-briefcase text-blue-600 mr-2"></i>
                     Ish ma'lumotlari
                 </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div>
-                        <label class="form-label">Filial <span class="text-red-500">*</span></label>
-                        <select id="branchId" required class="form-input">
+                        <label class="form-label text-sm">Filial <span class="text-red-500">*</span></label>
+                        <select id="branchId" required class="form-input text-sm">
                             <option value="">Tanlang</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="form-label">Bo'lim</label>
-                        <select id="departmentId" class="form-input">
+                        <label class="form-label text-sm">Bo'lim</label>
+                        <select id="departmentId" class="form-input text-sm">
                             <option value="">Tanlang</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="form-label">Lavozim</label>
-                        <input type="text" id="position" class="form-input" placeholder="Dasturchi">
+                        <label class="form-label text-sm">Lavozim</label>
+                        <input type="text" id="position" class="form-input text-sm" placeholder="Dasturchi">
                     </div>
 
                     <div>
-                        <label class="form-label">Ishga kirgan sana</label>
-                        <input type="date" id="hireDate" class="form-input">
+                        <label class="form-label text-sm">Ishga kirgan sana</label>
+                        <input type="date" id="hireDate" class="form-input text-sm">
                     </div>
                 </div>
             </div>
 
             <!-- Work Schedule -->
             <div class="mb-8">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-4 flex items-center">
                     <i class="fas fa-calendar-week text-blue-600 mr-2"></i>
                     Haftalik ish jadvali
                 </h3>
-                <p class="text-sm text-gray-600 mb-4">Har bir kun uchun ish vaqtini belgilang (24-soatlik format: 09:00, 13:30, 21:00). Dam olish kunlarini belgilash uchun "Dam olish" belgisini qo'ying.</p>
+                <p class="text-xs sm:text-sm text-gray-600 mb-4">Har bir kun uchun ish vaqtini belgilang. Dam olish kunlarini belgilash uchun "Dam" belgisini qo'ying.</p>
 
-                <div class="space-y-3">
+                <!-- Mobile: Stack layout, Desktop: Grid layout -->
+                <div class="space-y-2 sm:space-y-3">
+                    <!-- Header row - hidden on mobile -->
+                    <div class="hidden sm:grid grid-cols-12 gap-3 items-center px-3 text-xs font-semibold text-gray-500 uppercase">
+                        <div class="col-span-3">Kun</div>
+                        <div class="col-span-3">Boshlanish</div>
+                        <div class="col-span-3">Tugash</div>
+                        <div class="col-span-3 text-center">Dam olish</div>
+                    </div>
+
                     <!-- Monday -->
-                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
-                        <div class="col-span-3 font-medium text-gray-700">Dushanba</div>
-                        <div class="col-span-3">
-                            <input type="text" id="mon_start" class="form-input text-sm" value="09:00"
+                    <div class="flex flex-col sm:grid sm:grid-cols-12 gap-2 sm:gap-3 items-start sm:items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
+                            <span>Dushanba</span>
+                            <label class="flex items-center cursor-pointer sm:hidden">
+                                <input type="checkbox" id="mon_off_mobile" class="mr-1" onchange="toggleDayOff('mon')">
+                                <span class="text-xs text-gray-600">Dam</span>
+                            </label>
+                        </div>
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="mon_start" class="form-input text-sm w-full" value="09:00"
                                    placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
                         </div>
-                        <div class="col-span-3">
-                            <input type="text" id="mon_end" class="form-input text-sm" value="18:00"
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="mon_end" class="form-input text-sm w-full" value="18:00"
                                    placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
                         </div>
-                        <div class="col-span-3 flex items-center justify-center">
+                        <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
                                 <input type="checkbox" id="mon_off" class="mr-2" onchange="toggleDayOff('mon')">
                                 <span class="text-sm text-gray-600">Dam olish</span>
@@ -264,17 +344,23 @@
                     </div>
 
                     <!-- Tuesday -->
-                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
-                        <div class="col-span-3 font-medium text-gray-700">Seshanba</div>
-                        <div class="col-span-3">
-                            <input type="text" id="tue_start" class="form-input text-sm" value="09:00"
+                    <div class="flex flex-col sm:grid sm:grid-cols-12 gap-2 sm:gap-3 items-start sm:items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
+                            <span>Seshanba</span>
+                            <label class="flex items-center cursor-pointer sm:hidden">
+                                <input type="checkbox" id="tue_off_mobile" class="mr-1" onchange="toggleDayOff('tue')">
+                                <span class="text-xs text-gray-600">Dam</span>
+                            </label>
+                        </div>
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="tue_start" class="form-input text-sm w-full" value="09:00"
                                    placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
                         </div>
-                        <div class="col-span-3">
-                            <input type="text" id="tue_end" class="form-input text-sm" value="18:00"
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="tue_end" class="form-input text-sm w-full" value="18:00"
                                    placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
                         </div>
-                        <div class="col-span-3 flex items-center justify-center">
+                        <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
                                 <input type="checkbox" id="tue_off" class="mr-2" onchange="toggleDayOff('tue')">
                                 <span class="text-sm text-gray-600">Dam olish</span>
@@ -283,17 +369,23 @@
                     </div>
 
                     <!-- Wednesday -->
-                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
-                        <div class="col-span-3 font-medium text-gray-700">Chorshanba</div>
-                        <div class="col-span-3">
-                            <input type="text" id="wed_start" class="form-input text-sm" value="09:00"
+                    <div class="flex flex-col sm:grid sm:grid-cols-12 gap-2 sm:gap-3 items-start sm:items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
+                            <span>Chorshanba</span>
+                            <label class="flex items-center cursor-pointer sm:hidden">
+                                <input type="checkbox" id="wed_off_mobile" class="mr-1" onchange="toggleDayOff('wed')">
+                                <span class="text-xs text-gray-600">Dam</span>
+                            </label>
+                        </div>
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="wed_start" class="form-input text-sm w-full" value="09:00"
                                    placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
                         </div>
-                        <div class="col-span-3">
-                            <input type="text" id="wed_end" class="form-input text-sm" value="18:00"
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="wed_end" class="form-input text-sm w-full" value="18:00"
                                    placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
                         </div>
-                        <div class="col-span-3 flex items-center justify-center">
+                        <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
                                 <input type="checkbox" id="wed_off" class="mr-2" onchange="toggleDayOff('wed')">
                                 <span class="text-sm text-gray-600">Dam olish</span>
@@ -302,17 +394,23 @@
                     </div>
 
                     <!-- Thursday -->
-                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
-                        <div class="col-span-3 font-medium text-gray-700">Payshanba</div>
-                        <div class="col-span-3">
-                            <input type="text" id="thu_start" class="form-input text-sm" value="09:00"
+                    <div class="flex flex-col sm:grid sm:grid-cols-12 gap-2 sm:gap-3 items-start sm:items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
+                            <span>Payshanba</span>
+                            <label class="flex items-center cursor-pointer sm:hidden">
+                                <input type="checkbox" id="thu_off_mobile" class="mr-1" onchange="toggleDayOff('thu')">
+                                <span class="text-xs text-gray-600">Dam</span>
+                            </label>
+                        </div>
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="thu_start" class="form-input text-sm w-full" value="09:00"
                                    placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
                         </div>
-                        <div class="col-span-3">
-                            <input type="text" id="thu_end" class="form-input text-sm" value="18:00"
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="thu_end" class="form-input text-sm w-full" value="18:00"
                                    placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
                         </div>
-                        <div class="col-span-3 flex items-center justify-center">
+                        <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
                                 <input type="checkbox" id="thu_off" class="mr-2" onchange="toggleDayOff('thu')">
                                 <span class="text-sm text-gray-600">Dam olish</span>
@@ -321,17 +419,23 @@
                     </div>
 
                     <!-- Friday -->
-                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
-                        <div class="col-span-3 font-medium text-gray-700">Juma</div>
-                        <div class="col-span-3">
-                            <input type="text" id="fri_start" class="form-input text-sm" value="09:00"
+                    <div class="flex flex-col sm:grid sm:grid-cols-12 gap-2 sm:gap-3 items-start sm:items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
+                            <span>Juma</span>
+                            <label class="flex items-center cursor-pointer sm:hidden">
+                                <input type="checkbox" id="fri_off_mobile" class="mr-1" onchange="toggleDayOff('fri')">
+                                <span class="text-xs text-gray-600">Dam</span>
+                            </label>
+                        </div>
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="fri_start" class="form-input text-sm w-full" value="09:00"
                                    placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
                         </div>
-                        <div class="col-span-3">
-                            <input type="text" id="fri_end" class="form-input text-sm" value="18:00"
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="fri_end" class="form-input text-sm w-full" value="18:00"
                                    placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5">
                         </div>
-                        <div class="col-span-3 flex items-center justify-center">
+                        <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
                                 <input type="checkbox" id="fri_off" class="mr-2" onchange="toggleDayOff('fri')">
                                 <span class="text-sm text-gray-600">Dam olish</span>
@@ -340,17 +444,23 @@
                     </div>
 
                     <!-- Saturday -->
-                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
-                        <div class="col-span-3 font-medium text-gray-700">Shanba</div>
-                        <div class="col-span-3">
-                            <input type="text" id="sat_start" class="form-input text-sm" value="09:00"
-                                   placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" disabled>
+                    <div class="flex flex-col sm:grid sm:grid-cols-12 gap-2 sm:gap-3 items-start sm:items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
+                            <span>Shanba</span>
+                            <label class="flex items-center cursor-pointer sm:hidden">
+                                <input type="checkbox" id="sat_off_mobile" class="mr-1" checked onchange="toggleDayOff('sat')">
+                                <span class="text-xs text-gray-600">Dam</span>
+                            </label>
                         </div>
-                        <div class="col-span-3">
-                            <input type="text" id="sat_end" class="form-input text-sm" value="18:00"
-                                   placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" disabled>
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="sat_start" class="form-input text-sm w-full" value="09:00"
+                                   placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" disabled style="background-color: #f3f4f6;">
                         </div>
-                        <div class="col-span-3 flex items-center justify-center">
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="sat_end" class="form-input text-sm w-full" value="18:00"
+                                   placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" disabled style="background-color: #f3f4f6;">
+                        </div>
+                        <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
                                 <input type="checkbox" id="sat_off" class="mr-2" checked onchange="toggleDayOff('sat')">
                                 <span class="text-sm text-gray-600">Dam olish</span>
@@ -359,17 +469,23 @@
                     </div>
 
                     <!-- Sunday -->
-                    <div class="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
-                        <div class="col-span-3 font-medium text-gray-700">Yakshanba</div>
-                        <div class="col-span-3">
-                            <input type="text" id="sun_start" class="form-input text-sm" value="09:00"
-                                   placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" disabled>
+                    <div class="flex flex-col sm:grid sm:grid-cols-12 gap-2 sm:gap-3 items-start sm:items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
+                            <span>Yakshanba</span>
+                            <label class="flex items-center cursor-pointer sm:hidden">
+                                <input type="checkbox" id="sun_off_mobile" class="mr-1" checked onchange="toggleDayOff('sun')">
+                                <span class="text-xs text-gray-600">Dam</span>
+                            </label>
                         </div>
-                        <div class="col-span-3">
-                            <input type="text" id="sun_end" class="form-input text-sm" value="18:00"
-                                   placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" disabled>
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="sun_start" class="form-input text-sm w-full" value="09:00"
+                                   placeholder="09:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" disabled style="background-color: #f3f4f6;">
                         </div>
-                        <div class="col-span-3 flex items-center justify-center">
+                        <div class="sm:col-span-3 w-full">
+                            <input type="text" id="sun_end" class="form-input text-sm w-full" value="18:00"
+                                   placeholder="18:00" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" disabled style="background-color: #f3f4f6;">
+                        </div>
+                        <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
                                 <input type="checkbox" id="sun_off" class="mr-2" checked onchange="toggleDayOff('sun')">
                                 <span class="text-sm text-gray-600">Dam olish</span>
@@ -379,41 +495,41 @@
                 </div>
 
                 <!-- Lunch break - moved here -->
-                <div class="mt-4 p-4 bg-blue-50 rounded-lg">
-                    <label class="form-label text-sm">Tushlik tanaffusi (daqiqa)</label>
-                    <input type="number" id="lunchBreak" class="form-input" value="60" min="0" max="180">
+                <div class="mt-4 p-3 sm:p-4 bg-blue-50 rounded-lg">
+                    <label class="form-label text-xs sm:text-sm">Tushlik tanaffusi (daqiqa)</label>
+                    <input type="number" id="lunchBreak" class="form-input text-sm" value="60" min="0" max="180">
                 </div>
             </div>
 
             <!-- Salary Information -->
-            <div class="mb-8">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <div class="mb-6 sm:mb-8">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center">
                     <i class="fas fa-money-bill-wave text-blue-600 mr-2"></i>
                     Oylik ma'lumotlari
                 </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div>
-                        <label class="form-label">Maosh turi</label>
-                        <select id="salaryType" class="form-input">
+                        <label class="form-label text-sm">Maosh turi</label>
+                        <select id="salaryType" class="form-input text-sm">
                             <option value="monthly">Oylik</option>
                             <option value="daily">Kunlik</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="form-label">Maosh miqdori (UZS)</label>
-                        <input type="number" id="salary" class="form-input" placeholder="3000000" step="100000">
+                        <label class="form-label text-sm">Maosh miqdori (UZS)</label>
+                        <input type="number" id="salary" class="form-input text-sm" placeholder="3000000" step="100000">
                     </div>
                 </div>
             </div>
 
             <!-- Form Actions -->
-            <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
-                <button type="button" onclick="closeEmployeeModal()" class="btn-secondary">
+            <div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 sm:gap-3 pt-6 border-t border-gray-200">
+                <button type="button" onclick="closeEmployeeModal()" class="w-full sm:w-auto btn-secondary text-sm">
                     <i class="fas fa-times mr-2"></i>
                     Bekor qilish
                 </button>
-                <button type="submit" class="btn-primary">
+                <button type="submit" class="w-full sm:w-auto btn-primary text-sm">
                     <i class="fas fa-save mr-2"></i>
                     Saqlash
                 </button>
@@ -423,19 +539,19 @@
 </div>
 
 <!-- Employee Detail Modal -->
-<div id="employeeDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="sticky top-0 bg-white border-b border-gray-200 px-8 py-6 flex items-center justify-between">
+<div id="employeeDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-4xl my-2 sm:my-0">
+        <div class="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-8 py-4 sm:py-6 flex items-center justify-between rounded-t-xl sm:rounded-t-2xl">
             <div>
-                <h2 class="text-2xl font-bold text-gray-800">Xodim ma'lumotlari</h2>
-                <p class="text-sm text-gray-500 mt-1" id="detailEmployeeNo"></p>
+                <h2 class="text-lg sm:text-2xl font-bold text-gray-800">Xodim ma'lumotlari</h2>
+                <p class="text-xs sm:text-sm text-gray-500 mt-1" id="detailEmployeeNo"></p>
             </div>
-            <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-2xl"></i>
+            <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 p-2">
+                <i class="fas fa-times text-xl sm:text-2xl"></i>
             </button>
         </div>
 
-        <div class="p-8">
+        <div class="p-4 sm:p-8 max-h-[75vh] sm:max-h-[70vh] overflow-y-auto">
             <div id="employeeDetailContent">
                 <!-- Filled by JS -->
             </div>
@@ -444,19 +560,19 @@
 </div>
 
 <!-- Delete Confirmation Modal -->
-<div id="deleteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+<div id="deleteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-4 sm:p-6">
         <div class="text-center">
-            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-trash-alt text-red-600 text-2xl"></i>
+            <div class="w-14 h-14 sm:w-16 sm:h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-trash-alt text-red-600 text-xl sm:text-2xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-gray-800 mb-2">Xodimni o'chirish</h3>
-            <p class="text-gray-600 mb-6">Haqiqatan ham bu xodimni o'chirmoqchimisiz? Bu amal qaytarilmaydi.</p>
-            <div class="flex gap-3">
-                <button onclick="closeDeleteModal()" class="flex-1 btn-secondary">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-2">Xodimni o'chirish</h3>
+            <p class="text-sm sm:text-base text-gray-600 mb-6">Haqiqatan ham bu xodimni o'chirmoqchimisiz? Bu amal qaytarilmaydi.</p>
+            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <button onclick="closeDeleteModal()" class="flex-1 btn-secondary text-sm sm:text-base order-2 sm:order-1">
                     Bekor qilish
                 </button>
-                <button onclick="confirmDelete()" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                <button onclick="confirmDelete()" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition text-sm sm:text-base order-1 sm:order-2">
                     O'chirish
                 </button>
             </div>
@@ -562,49 +678,49 @@ function renderEmployeesTable() {
 
     tbody.innerHTML = employees.map(emp => `
         <tr class="hover:bg-gray-50">
-            <td class="px-6 py-4">
+            <td class="px-4 sm:px-6 py-3 sm:py-4">
                 <input type="checkbox" class="rounded employee-checkbox" value="${emp.id}">
             </td>
-            <td class="px-6 py-4">
+            <td class="px-4 sm:px-6 py-3 sm:py-4" data-label="Xodim">
                 <div class="flex items-center">
-                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mr-3">
-                        <span class="text-white font-bold text-sm">${emp.full_name.charAt(0)}</span>
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
+                        <span class="text-white font-bold text-xs sm:text-sm">${emp.full_name.charAt(0)}</span>
                     </div>
-                    <div>
-                        <p class="font-medium text-gray-800">${emp.full_name}</p>
+                    <div class="min-w-0">
+                        <p class="font-medium text-gray-800 text-sm sm:text-base truncate">${emp.full_name}</p>
                         <p class="text-xs text-gray-500">ID: ${emp.employee_no}</p>
                     </div>
                 </div>
             </td>
-            <td class="px-6 py-4">
-                <span class="badge badge-info">${emp.branch_name || 'N/A'}</span>
+            <td class="px-4 sm:px-6 py-3 sm:py-4" data-label="Filial">
+                <span class="badge badge-info text-xs">${emp.branch_name || 'N/A'}</span>
             </td>
-            <td class="px-6 py-4">
-                <span class="badge badge-secondary">${emp.department_name || 'N/A'}</span>
+            <td class="px-4 sm:px-6 py-3 sm:py-4" data-label="Bo'lim">
+                <span class="badge badge-secondary text-xs">${emp.department_name || 'N/A'}</span>
             </td>
-            <td class="px-6 py-4 text-gray-600">${emp.position || '-'}</td>
-            <td class="px-6 py-4 text-gray-600">${emp.phone || '-'}</td>
-            <td class="px-6 py-4">
+            <td class="px-4 sm:px-6 py-3 sm:py-4 text-gray-600 text-sm" data-label="Lavozim">${emp.position || '-'}</td>
+            <td class="px-4 sm:px-6 py-3 sm:py-4 text-gray-600 text-sm" data-label="Telefon">${emp.phone || '-'}</td>
+            <td class="px-4 sm:px-6 py-3 sm:py-4" data-label="Oylik">
                 <div>
-                    <p class="font-medium text-gray-800">${emp.salary ? formatCurrency(emp.salary) : '-'}</p>
+                    <p class="font-medium text-gray-800 text-sm">${emp.salary ? formatCurrency(emp.salary) : '-'}</p>
                     <p class="text-xs text-gray-500">${emp.salary_type === 'monthly' ? 'Oylik' : 'Kunlik'}</p>
                 </div>
             </td>
-            <td class="px-6 py-4 text-gray-600 text-sm">
+            <td class="px-4 sm:px-6 py-3 sm:py-4 text-gray-600 text-xs sm:text-sm" data-label="Ish vaqti">
                 ${formatTime(emp.work_start_time)} - ${formatTime(emp.work_end_time)}
             </td>
-            <td class="px-6 py-4">
+            <td class="px-4 sm:px-6 py-3 sm:py-4" data-label="Holat">
                 ${getStatusBadge(emp.status)}
             </td>
-            <td class="px-6 py-4">
-                <div class="flex items-center gap-2">
-                    <button onclick="viewEmployee('${emp.id}')" class="text-blue-600 hover:text-blue-800" title="Ko'rish">
+            <td class="px-4 sm:px-6 py-3 sm:py-4" data-label="Harakatlar">
+                <div class="flex items-center gap-3 sm:gap-2">
+                    <button onclick="viewEmployee('${emp.id}')" class="text-blue-600 hover:text-blue-800 p-1" title="Ko'rish">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button onclick="editEmployee('${emp.id}')" class="text-green-600 hover:text-green-800" title="Tahrirlash">
+                    <button onclick="editEmployee('${emp.id}')" class="text-green-600 hover:text-green-800 p-1" title="Tahrirlash">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="openDeleteModal('${emp.id}')" class="text-red-600 hover:text-red-800" title="O'chirish">
+                    <button onclick="openDeleteModal('${emp.id}')" class="text-red-600 hover:text-red-800 p-1" title="O'chirish">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -925,7 +1041,11 @@ document.getElementById('employeeForm').addEventListener('submit', async (e) => 
     // Collect weekly schedule
     const weekDays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
     const schedule = weekDays.map((day, index) => {
-        const isDayOff = document.getElementById(`${day}_off`).checked;
+        // Check both desktop and mobile checkboxes
+        const desktopCheckbox = document.getElementById(`${day}_off`);
+        const mobileCheckbox = document.getElementById(`${day}_off_mobile`);
+        const isDayOff = desktopCheckbox?.checked || mobileCheckbox?.checked;
+
         const startTime = document.getElementById(`${day}_start`).value;
         const endTime = document.getElementById(`${day}_end`).value;
 
@@ -1103,7 +1223,15 @@ function setupTimeInputs() {
 
 // Toggle day off - disable/enable time inputs
 function toggleDayOff(day) {
-    const isOff = document.getElementById(`${day}_off`).checked;
+    // Sync desktop and mobile checkboxes
+    const desktopCheckbox = document.getElementById(`${day}_off`);
+    const mobileCheckbox = document.getElementById(`${day}_off_mobile`);
+
+    // Determine which was clicked and sync the other
+    const isOff = desktopCheckbox?.checked || mobileCheckbox?.checked;
+    if (desktopCheckbox) desktopCheckbox.checked = isOff;
+    if (mobileCheckbox) mobileCheckbox.checked = isOff;
+
     const startInput = document.getElementById(`${day}_start`);
     const endInput = document.getElementById(`${day}_end`);
 

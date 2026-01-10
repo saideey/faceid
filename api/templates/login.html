@@ -2,7 +2,7 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Kirish - Davomat Tizimi</title>
 
     <!-- Tailwind CSS -->
@@ -15,6 +15,7 @@
         body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
         }
 
         .login-container {
@@ -22,42 +23,82 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 2rem;
+            padding: 1rem;
+        }
+
+        @media (min-width: 640px) {
+            .login-container {
+                padding: 2rem;
+            }
         }
 
         .login-card {
             background: white;
-            border-radius: 24px;
+            border-radius: 16px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
             max-width: 1000px;
             width: 100%;
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
         }
 
-        @media (max-width: 768px) {
+        @media (min-width: 768px) {
             .login-card {
-                grid-template-columns: 1fr;
-            }
-
-            .login-left {
-                display: none;
+                border-radius: 24px;
+                grid-template-columns: 1fr 1fr;
             }
         }
 
         .login-left {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 3rem;
-            display: flex;
+            padding: 2rem;
+            display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             color: white;
         }
 
+        @media (min-width: 768px) {
+            .login-left {
+                display: flex;
+                padding: 3rem;
+            }
+        }
+
         .login-right {
-            padding: 3rem;
+            padding: 1.5rem;
+        }
+
+        @media (min-width: 640px) {
+            .login-right {
+                padding: 2rem;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .login-right {
+                padding: 3rem;
+            }
+        }
+
+        /* Mobile header - only shows on mobile */
+        .mobile-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            color: white;
+        }
+
+        @media (min-width: 768px) {
+            .mobile-header {
+                display: none;
+            }
         }
 
         .form-input {
@@ -65,8 +106,9 @@
             padding: 0.875rem 1rem;
             border: 2px solid #e5e7eb;
             border-radius: 12px;
-            font-size: 0.9375rem;
+            font-size: 16px; /* Prevents zoom on iOS */
             transition: all 0.3s ease;
+            -webkit-appearance: none;
         }
 
         .form-input:focus {
@@ -86,6 +128,7 @@
             border: none;
             cursor: pointer;
             font-size: 1rem;
+            min-height: 48px; /* Better touch target */
         }
 
         .btn-primary:hover {
@@ -111,12 +154,22 @@
         }
 
         .tab-button {
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
+            padding: 0.625rem 1rem;
+            border-radius: 10px;
             font-weight: 500;
             transition: all 0.3s ease;
             cursor: pointer;
             border: 2px solid transparent;
+            font-size: 0.875rem;
+            min-height: 44px;
+        }
+
+        @media (min-width: 640px) {
+            .tab-button {
+                padding: 0.75rem 1.5rem;
+                border-radius: 12px;
+                font-size: 1rem;
+            }
         }
 
         .tab-button.active {
@@ -137,12 +190,21 @@
             position: fixed;
             top: 1rem;
             right: 1rem;
-            padding: 1rem 1.5rem;
+            left: 1rem;
+            padding: 0.875rem 1rem;
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
             animation: slideInRight 0.3s ease;
             z-index: 9999;
             display: none;
+        }
+
+        @media (min-width: 640px) {
+            .notification {
+                left: auto;
+                max-width: 400px;
+                padding: 1rem 1.5rem;
+            }
         }
 
         .notification.show {
@@ -184,37 +246,65 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Password toggle button - better touch target */
+        .password-toggle {
+            min-width: 44px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Checkbox - better touch target */
+        .checkbox-wrapper {
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Feature list on desktop left panel */
+        .feature-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0;
+        }
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="login-card">
-            <!-- Left Side -->
+            <!-- Left Side - Hidden on mobile -->
             <div class="login-left">
                 <div class="floating-icon mb-8">
                     <div class="w-24 h-24 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                        <i class="fas fa-clock text-6xl text-white"></i>
+                        <i class="fas fa-clock text-5xl sm:text-6xl text-white"></i>
                     </div>
                 </div>
 
-                <h1 class="text-4xl font-bold mb-4 text-center">Davomat Tizimi</h1>
-                <p class="text-lg text-center opacity-90 mb-8">Xodimlar davomatini kuzatish va boshqarish tizimi</p>
+                <h1 class="text-3xl sm:text-4xl font-bold mb-4 text-center">Davomat Tizimi</h1>
+                <p class="text-base sm:text-lg text-center opacity-90 mb-8">Xodimlar davomatini kuzatish va boshqarish tizimi</p>
 
-                <div class="space-y-4 text-sm opacity-90">
-                    <div class="flex items-center">
-                        <i class="fas fa-check-circle mr-3 text-xl"></i>
+                <div class="space-y-3 text-sm opacity-90">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle mr-3 text-lg sm:text-xl"></i>
                         <span>Face ID bilan davomat</span>
                     </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check-circle mr-3 text-xl"></i>
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle mr-3 text-lg sm:text-xl"></i>
                         <span>Avtomatik oylik hisoblash</span>
                     </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check-circle mr-3 text-xl"></i>
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle mr-3 text-lg sm:text-xl"></i>
                         <span>Real-time monitoring</span>
                     </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check-circle mr-3 text-xl"></i>
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle mr-3 text-lg sm:text-xl"></i>
                         <span>Bonus va jarima tizimi</span>
                     </div>
                 </div>
@@ -222,28 +312,37 @@
 
             <!-- Right Side -->
             <div class="login-right">
-                <div class="mb-8">
-                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Xush kelibsiz!</h2>
-                    <p class="text-gray-600">Tizimga kirish uchun ma'lumotlaringizni kiriting</p>
+                <!-- Mobile Header - Only shows on mobile -->
+                <div class="mobile-header">
+                    <div class="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mb-3">
+                        <i class="fas fa-clock text-3xl text-white"></i>
+                    </div>
+                    <h1 class="text-xl font-bold">Davomat Tizimi</h1>
+                </div>
+
+                <div class="mb-6 sm:mb-8">
+                    <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Xush kelibsiz!</h2>
+                    <p class="text-sm sm:text-base text-gray-600">Tizimga kirish uchun ma'lumotlaringizni kiriting</p>
                 </div>
 
                 <!-- Tabs -->
-                <div class="flex gap-2 mb-8">
+                <div class="flex gap-2 mb-6 sm:mb-8">
                     <button onclick="switchTab('company')" id="companyTab" class="tab-button active flex-1">
-                        <i class="fas fa-building mr-2"></i>
-                        Kompaniya
+                        <i class="fas fa-building mr-1 sm:mr-2"></i>
+                        <span class="hidden sm:inline">Kompaniya</span>
+                        <span class="sm:hidden">Kompaniya</span>
                     </button>
                 </div>
 
                 <!-- Company Login Form -->
-                <form id="companyLoginForm" class="space-y-6">
+                <form id="companyLoginForm" class="space-y-4 sm:space-y-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             <i class="fas fa-envelope mr-2 text-gray-400"></i>
                             Email
                         </label>
                         <input type="email" id="companyEmail" required class="form-input"
-                            placeholder="admin@company.com">
+                            placeholder="admin@company.com" autocomplete="email" inputmode="email">
                     </div>
 
                     <div>
@@ -252,19 +351,19 @@
                             Parol
                         </label>
                         <div class="relative">
-                            <input type="password" id="companyPassword" required class="form-input pr-12"
-                                placeholder="••••••••">
+                            <input type="password" id="companyPassword" required class="form-input pr-14"
+                                placeholder="••••••••" autocomplete="current-password">
                             <button type="button" onclick="togglePassword('companyPassword')"
-                                class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                class="password-toggle absolute right-1 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-between">
-                        <label class="flex items-center">
-                            <input type="checkbox" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                            <span class="ml-2 text-sm text-gray-600">Meni eslab qol</span>
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <label class="checkbox-wrapper cursor-pointer">
+                            <input type="checkbox" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 mr-2">
+                            <span class="text-sm text-gray-600">Meni eslab qol</span>
                         </label>
                         <a href="#" class="text-sm text-purple-600 hover:text-purple-700 font-medium">
                             Parolni unutdingizmi?
@@ -278,14 +377,14 @@
                 </form>
 
                 <!-- Super Admin Login Form -->
-                <form id="superadminLoginForm" class="space-y-6 hidden">
+                <form id="superadminLoginForm" class="space-y-4 sm:space-y-6 hidden">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             <i class="fas fa-envelope mr-2 text-gray-400"></i>
                             Email
                         </label>
                         <input type="email" id="superadminEmail" required class="form-input"
-                            placeholder="admin@system.com">
+                            placeholder="admin@system.com" autocomplete="email" inputmode="email">
                     </div>
 
                     <div>
@@ -294,10 +393,10 @@
                             Parol
                         </label>
                         <div class="relative">
-                            <input type="password" id="superadminPassword" required class="form-input pr-12"
-                                placeholder="••••••••">
+                            <input type="password" id="superadminPassword" required class="form-input pr-14"
+                                placeholder="••••••••" autocomplete="current-password">
                             <button type="button" onclick="togglePassword('superadminPassword')"
-                                class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                class="password-toggle absolute right-1 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
@@ -309,8 +408,8 @@
                     </button>
                 </form>
 
-                <div class="mt-8 text-center">
-                    <p class="text-sm text-gray-500">
+                <div class="mt-6 sm:mt-8 text-center">
+                    <p class="text-xs sm:text-sm text-gray-500">
                         © 2025 Davomat Tizimi. Barcha huquqlar himoyalangan.
                     </p>
                 </div>
@@ -321,8 +420,8 @@
     <!-- Notification -->
     <div id="notification" class="notification">
         <div class="flex items-center">
-            <i id="notificationIcon" class="fas fa-check-circle mr-3 text-xl"></i>
-            <p id="notificationMessage">Success message</p>
+            <i id="notificationIcon" class="fas fa-check-circle mr-3 text-lg sm:text-xl"></i>
+            <p id="notificationMessage" class="text-sm sm:text-base">Success message</p>
         </div>
     </div>
 
@@ -332,7 +431,7 @@
         function switchTab(tab) {
             // Update tab buttons
             document.getElementById('companyTab').classList.remove('active');
-            document.getElementById('superadminTab').classList.remove('active');
+            document.getElementById('superadminTab')?.classList.remove('active');
             document.getElementById(tab + 'Tab').classList.add('active');
 
             // Update forms
@@ -367,9 +466,9 @@
             messageEl.textContent = message;
 
             if (type === 'success') {
-                icon.className = 'fas fa-check-circle mr-3 text-xl';
+                icon.className = 'fas fa-check-circle mr-3 text-lg sm:text-xl';
             } else {
-                icon.className = 'fas fa-times-circle mr-3 text-xl';
+                icon.className = 'fas fa-times-circle mr-3 text-lg sm:text-xl';
             }
 
             setTimeout(() => {
@@ -472,6 +571,15 @@
             } finally {
                 spinner.style.display = 'none';
                 text.textContent = 'Kirish';
+            }
+        });
+
+        // Check if already logged in
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                // Optionally redirect to dashboard if already logged in
+                // window.location.replace('/dashboard');
             }
         });
     </script>
