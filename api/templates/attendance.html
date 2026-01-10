@@ -182,6 +182,26 @@
             </select>
         </div>
 
+        <!-- Oylik limitlar -->
+        <div id="monthlyLimitsInfo" class="hidden mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="flex flex-wrap gap-4 text-sm">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-umbrella-beach text-cyan-600"></i>
+                    <span class="text-gray-600">Dam olish:</span>
+                    <span class="font-semibold text-cyan-700" id="restDaysUsed">0</span>
+                    <span class="text-gray-400">/</span>
+                    <span class="text-gray-600">2</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-briefcase-medical text-fuchsia-600"></i>
+                    <span class="text-gray-600">Kasal:</span>
+                    <span class="font-semibold text-fuchsia-700" id="sickDaysUsed">0</span>
+                    <span class="text-gray-400">/</span>
+                    <span class="text-gray-600">20</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Calendar Grid -->
         <div id="calendarGrid" class="grid grid-cols-7 gap-1.5">
             <!-- Filled by JS -->
@@ -198,12 +218,20 @@
                 <span class="text-gray-600">Kech qolgan</span>
             </div>
             <div class="flex items-center">
-                <div class="w-4 h-4 bg-red-500 rounded mr-2"></div>
+                <div class="w-3 h-3 bg-red-500 rounded mr-1.5"></div>
                 <span class="text-gray-600">Yo'q</span>
             </div>
             <div class="flex items-center">
-                <div class="w-4 h-4 bg-gray-200 rounded mr-2"></div>
-                <span class="text-gray-600">Dam olish kuni</span>
+                <div class="w-3 h-3 bg-gray-200 rounded mr-1.5"></div>
+                <span class="text-gray-600">Hafta dam olishi</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-3 h-3 bg-cyan-500 rounded mr-1.5"></div>
+                <span class="text-gray-600">Dam olish (pullik)</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-3 h-3 bg-fuchsia-500 rounded mr-1.5"></div>
+                <span class="text-gray-600">Kasal (pullik)</span>
             </div>
         </div>
     </div>
@@ -224,6 +252,70 @@
 
         <div class="p-8" id="attendanceDetailContent">
             <!-- Filled by JS -->
+        </div>
+    </div>
+</div>
+
+<!-- Day Action Modal - Dam olish / Kasal belgilash -->
+<div id="dayActionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
+        <div class="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">Kun holatini belgilash</h2>
+                <p class="text-sm text-gray-500 mt-1" id="dayActionDate"></p>
+            </div>
+            <button onclick="closeDayActionModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <div class="p-6">
+            <!-- Xodim ma'lumotlari -->
+            <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p class="text-sm text-gray-600">Xodim:</p>
+                <p class="font-semibold text-gray-800" id="dayActionEmployeeName"></p>
+            </div>
+
+            <!-- Joriy holat -->
+            <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200" id="currentDayStatus">
+                <p class="text-sm text-blue-600">Joriy holat:</p>
+                <p class="font-semibold text-blue-800" id="currentStatusText">Oddiy ish kuni</p>
+            </div>
+
+            <!-- Limitlar haqida ma'lumot -->
+            <div class="mb-6 grid grid-cols-2 gap-3">
+                <div class="p-3 bg-cyan-50 rounded-lg border border-cyan-200 text-center">
+                    <p class="text-xs text-cyan-600 mb-1">Dam olish qoldi</p>
+                    <p class="text-2xl font-bold text-cyan-700" id="restDaysRemaining">2</p>
+                    <p class="text-xs text-cyan-500">oyiga 2 ta</p>
+                </div>
+                <div class="p-3 bg-fuchsia-50 rounded-lg border border-fuchsia-200 text-center">
+                    <p class="text-xs text-fuchsia-600 mb-1">Kasal qoldi</p>
+                    <p class="text-2xl font-bold text-fuchsia-700" id="sickDaysRemaining">20</p>
+                    <p class="text-xs text-fuchsia-500">oyiga 20 ta</p>
+                </div>
+            </div>
+
+            <!-- Harakatlar -->
+            <div class="space-y-3">
+                <button onclick="setDayStatus('rest')" id="btnSetRest"
+                    class="w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white transition">
+                    <i class="fas fa-umbrella-beach"></i>
+                    Dam olish deb belgilash
+                </button>
+
+                <button onclick="setDayStatus('sick')" id="btnSetSick"
+                    class="w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 bg-fuchsia-500 hover:bg-fuchsia-600 text-white transition">
+                    <i class="fas fa-briefcase-medical"></i>
+                    Kasal deb belgilash
+                </button>
+
+                <button onclick="setDayStatus('normal')" id="btnSetNormal"
+                    class="w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white transition">
+                    <i class="fas fa-undo"></i>
+                    Oddiy kun qilish (bekor qilish)
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -266,6 +358,17 @@
 .calendar-day.weekend {
     background: #f3f4f6;
 }
+
+/* Dam olish va Kasal ranglari */
+.calendar-day.rest-day {
+    background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
+    border-color: #06b6d4;
+}
+
+.calendar-day.sick-day {
+    background: linear-gradient(135deg, #fdf4ff 0%, #f5d0fe 100%);
+    border-color: #d946ef;
+}
 </style>
 
 {% endblock %}
@@ -280,6 +383,15 @@ let departments = [];
 let currentCalendarMonth = new Date().getMonth();
 let currentCalendarYear = new Date().getFullYear();
 let liveUpdateInterval = null;
+
+// Dam olish va kasal kunlar uchun
+let employeeLeaves = {}; // { employee_id: { 'YYYY-MM-DD': 'rest' | 'sick' } }
+let selectedDayForAction = null;
+let selectedEmployeeForAction = null;
+
+// Limitlar
+const MONTHLY_REST_LIMIT = 2;
+const MONTHLY_SICK_LIMIT = 20;
 
 // Load attendance
 async function loadAttendance() {
@@ -336,9 +448,7 @@ async function loadAttendance() {
             const presentIds = attendanceLogs.map(a => a.employee_id);
             const absentEmployees = allEmployees.filter(e => !presentIds.includes(e.id));
             // Add absent employees to logs
-            attendanceLogs = [
-                ...attendanceLogs,
-                ...absentEmployees.map(e => ({
+            attendanceLogs = absentEmployees.map(e => ({
                     employee_id: e.id,
                     employee_name: e.full_name,
                     employee_no: e.employee_no,
@@ -348,8 +458,8 @@ async function loadAttendance() {
                     check_in_time: null,
                     check_out_time: null,
                     is_absent: true
-                }))
-            ];
+                }));
+
         }
 
         renderAttendanceTable();
@@ -520,11 +630,15 @@ function updateStats() {
     document.getElementById('totalWorkHours').textContent = totalWorkHours;
 }
 
-// Calendar functions
+// ==========================================
+// KALENDAR FUNKSIYALARI
+// ==========================================
+
 async function loadCalendar() {
     const employeeId = document.getElementById('calendarEmployee').value;
     if (!employeeId) {
         document.getElementById('calendarGrid').innerHTML = '<p class="col-span-7 text-center text-gray-500 py-8">Xodim tanlang</p>';
+        document.getElementById('monthlyLimitsInfo').classList.add('hidden');
         return;
     }
 
@@ -538,15 +652,16 @@ async function loadCalendar() {
         const startDate = firstDay.toISOString().split('T')[0];
         const endDate = lastDay.toISOString().split('T')[0];
 
-        // Load attendance for the month AND employee schedule
-        const [attendanceResponse, scheduleResponse] = await Promise.all([
+        // Load attendance, employee schedule, AND employee leaves
+        const [attendanceResponse, scheduleResponse, leavesResponse] = await Promise.all([
             API.attendance.list({
                 employee_id: employeeId,
                 start_date: startDate,
                 end_date: endDate,
                 per_page: 1000
             }),
-            API.employees.getSchedule(employeeId).catch(() => ({ schedule: [] }))
+            API.employees.getSchedule(employeeId).catch(() => ({ schedule: [] })),
+            loadEmployeeLeaves(employeeId, currentCalendarYear, currentCalendarMonth + 1)
         ]);
 
         console.log('📊 Calendar API Response:', attendanceResponse);
@@ -570,14 +685,19 @@ async function loadCalendar() {
         const employeeSchedule = scheduleResponse.schedule || [];
 
         console.log('📅 Employee schedule loaded:', employeeSchedule);
+        console.log('🏖️ Employee leaves loaded:', leavesResponse);
 
         // Update month display
         const monthNames = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
                            'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
         document.getElementById('calendarMonth').textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
 
-        // Render calendar with schedule
-        renderCalendar(monthLogs, employeeSchedule);
+        // Limitlarni ko'rsatish
+        updateMonthlyLimitsDisplay(employeeId);
+        document.getElementById('monthlyLimitsInfo').classList.remove('hidden');
+
+        // Render calendar with schedule and leaves
+        renderCalendar(monthLogs, employeeSchedule, employeeId);
 
     } catch (error) {
         console.error('Error loading calendar:', error);
@@ -587,7 +707,57 @@ async function loadCalendar() {
     }
 }
 
-function renderCalendar(monthLogs, employeeSchedule = []) {
+// Dam olish va kasal kunlarini yuklash
+async function loadEmployeeLeaves(employeeId, year, month) {
+    try {
+        // API.leaves orqali yuklash
+        const response = await API.leaves.getByEmployee(employeeId, year, month);
+
+        // Lokal cache ga saqlash
+        if (!employeeLeaves[employeeId]) {
+            employeeLeaves[employeeId] = {};
+        }
+
+        const leaves = response?.leaves || [];
+        leaves.forEach(leave => {
+            employeeLeaves[employeeId][leave.date] = leave.type; // 'rest' yoki 'sick'
+        });
+
+        return leaves;
+    } catch (error) {
+        console.error('Error loading leaves:', error);
+        return [];
+    }
+}
+
+// Oylik limitlarni yangilash
+function updateMonthlyLimitsDisplay(employeeId) {
+    const counts = getMonthlyLeaveCounts(employeeId);
+
+    document.getElementById('restDaysUsed').textContent = counts.rest;
+    document.getElementById('sickDaysUsed').textContent = counts.sick;
+}
+
+// Oylik dam olish va kasal kunlar sonini hisoblash
+function getMonthlyLeaveCounts(employeeId) {
+    let restCount = 0;
+    let sickCount = 0;
+
+    if (employeeLeaves[employeeId]) {
+        const monthPrefix = `${currentCalendarYear}-${String(currentCalendarMonth + 1).padStart(2, '0')}`;
+
+        Object.entries(employeeLeaves[employeeId]).forEach(([date, type]) => {
+            if (date.startsWith(monthPrefix)) {
+                if (type === 'rest') restCount++;
+                else if (type === 'sick') sickCount++;
+            }
+        });
+    }
+
+    return { rest: restCount, sick: sickCount };
+}
+
+function renderCalendar(monthLogs, employeeSchedule = [], employeeId) {
     const grid = document.getElementById('calendarGrid');
 
     // Week day headers
@@ -635,10 +805,14 @@ function renderCalendar(monthLogs, employeeSchedule = []) {
         // Find log for this day
         const log = monthLogs.find(l => l.date === dateStr);
 
+        // Check if it's a leave day (rest or sick)
+        const leaveType = employeeLeaves[employeeId] ? employeeLeaves[employeeId][dateStr] : null;
+
         let bgColor = 'bg-white';
         let borderColor = 'border-gray-200';
         let icon = '';
         let label = '';
+        let extraClass = '';
 
         // Detailed debug
         if (log) {
@@ -646,13 +820,25 @@ function renderCalendar(monthLogs, employeeSchedule = []) {
                 date: dateStr,
                 late_minutes: log.late_minutes,
                 check_in: log.check_in_time,
-                isDayOff: isDayOff
+                isDayOff: isDayOff,
+                leaveType: leaveType
             });
-        } else if (date <= today && !isDayOff) {
-            console.log(`Day ${day}: NO LOG (absent)`, { date: dateStr, isDayOff });
         }
 
-        if (isDayOff) {
+        // Dam olish yoki kasal kuni tekshirish
+        if (leaveType === 'rest') {
+            bgColor = 'bg-cyan-50';
+            borderColor = 'border-cyan-400';
+            icon = '<i class="fas fa-umbrella-beach text-cyan-600 text-xs"></i>';
+            label = '<div class="text-[10px] text-cyan-600 font-medium">Dam olish</div>';
+            extraClass = 'rest-day';
+        } else if (leaveType === 'sick') {
+            bgColor = 'bg-fuchsia-50';
+            borderColor = 'border-fuchsia-400';
+            icon = '<i class="fas fa-briefcase-medical text-fuchsia-600 text-xs"></i>';
+            label = '<div class="text-[10px] text-fuchsia-600 font-medium">Kasal</div>';
+            extraClass = 'sick-day';
+        } else if (isDayOff) {
             // Employee's off day (from schedule)
             bgColor = 'bg-gray-100';
             borderColor = 'border-gray-300';
@@ -683,14 +869,14 @@ function renderCalendar(monthLogs, employeeSchedule = []) {
         }
 
         daysHTML.push(`
-            <div class="calendar-day ${bgColor} border ${borderColor} ${isToday ? 'today ring-2 ring-blue-500' : ''}"
-                onclick="selectCalendarDay('${dateStr}')">
+            <div class="calendar-day ${bgColor} border ${borderColor} ${isToday ? 'today ring-2 ring-blue-500' : ''} ${extraClass}"
+                onclick="openDayActionModal('${dateStr}', '${employeeId}')">
                 <div class="flex items-center justify-between mb-1">
                     <span class="text-sm font-medium">${day}</span>
                     ${icon}
                 </div>
                 ${label}
-                ${log ? `
+                ${log && !leaveType ? `
                     <div class="text-[10px] text-gray-600 mt-1">
                         <div>${formatTime(log.check_in_time)}</div>
                         ${log.late_minutes > 0 ? `<div class="text-yellow-600">+${log.late_minutes}min</div>` : ''}
@@ -702,6 +888,145 @@ function renderCalendar(monthLogs, employeeSchedule = []) {
 
     grid.innerHTML = headerHTML + daysHTML.join('');
 }
+
+// ==========================================
+// DAM OLISH / KASAL MODAL FUNKSIYALARI
+// ==========================================
+
+function openDayActionModal(dateStr, employeeId) {
+    selectedDayForAction = dateStr;
+    selectedEmployeeForAction = employeeId;
+
+    // Xodim nomini topish
+    const employee = allEmployees.find(e => e.id == employeeId);
+    document.getElementById('dayActionEmployeeName').textContent = employee ? employee.full_name : 'Noma\'lum';
+
+    // Sanani formatlash
+    const dateObj = new Date(dateStr);
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('dayActionDate').textContent = dateObj.toLocaleDateString('uz-UZ', options);
+
+    // Joriy holatni ko'rsatish
+    const currentStatus = employeeLeaves[employeeId] ? employeeLeaves[employeeId][dateStr] : null;
+    let statusText = 'Oddiy ish kuni';
+    let statusClass = 'bg-blue-50 border-blue-200';
+
+    if (currentStatus === 'rest') {
+        statusText = '🏖️ Dam olish kuni';
+        statusClass = 'bg-cyan-50 border-cyan-200';
+    } else if (currentStatus === 'sick') {
+        statusText = '🏥 Kasal kuni';
+        statusClass = 'bg-fuchsia-50 border-fuchsia-200';
+    }
+
+    document.getElementById('currentStatusText').textContent = statusText;
+    document.getElementById('currentDayStatus').className = `mb-4 p-3 rounded-lg border ${statusClass}`;
+
+    // Qolgan limitlarni ko'rsatish
+    const counts = getMonthlyLeaveCounts(employeeId);
+    const restRemaining = MONTHLY_REST_LIMIT - counts.rest;
+    const sickRemaining = MONTHLY_SICK_LIMIT - counts.sick;
+
+    document.getElementById('restDaysRemaining').textContent = Math.max(0, restRemaining);
+    document.getElementById('sickDaysRemaining').textContent = Math.max(0, sickRemaining);
+
+    // Tugmalarni enable/disable qilish
+    const btnRest = document.getElementById('btnSetRest');
+    const btnSick = document.getElementById('btnSetSick');
+    const btnNormal = document.getElementById('btnSetNormal');
+
+    // Agar allaqachon belgilangan bo'lsa, o'sha turni hisoblashdan chiqarish
+    let effectiveRestRemaining = restRemaining;
+    let effectiveSickRemaining = sickRemaining;
+
+    if (currentStatus === 'rest') {
+        effectiveRestRemaining += 1; // Bu kunni qayta belgilash mumkin
+    } else if (currentStatus === 'sick') {
+        effectiveSickRemaining += 1;
+    }
+
+    if (effectiveRestRemaining <= 0) {
+        btnRest.disabled = true;
+        btnRest.classList.add('opacity-50', 'cursor-not-allowed');
+        btnRest.classList.remove('hover:bg-cyan-600');
+    } else {
+        btnRest.disabled = false;
+        btnRest.classList.remove('opacity-50', 'cursor-not-allowed');
+        btnRest.classList.add('hover:bg-cyan-600');
+    }
+
+    if (effectiveSickRemaining <= 0) {
+        btnSick.disabled = true;
+        btnSick.classList.add('opacity-50', 'cursor-not-allowed');
+        btnSick.classList.remove('hover:bg-fuchsia-600');
+    } else {
+        btnSick.disabled = false;
+        btnSick.classList.remove('opacity-50', 'cursor-not-allowed');
+        btnSick.classList.add('hover:bg-fuchsia-600');
+    }
+
+    // Agar hech narsa belgilanmagan bo'lsa, "Oddiy kun qilish" tugmasini yashirish
+    if (!currentStatus) {
+        btnNormal.classList.add('hidden');
+    } else {
+        btnNormal.classList.remove('hidden');
+    }
+
+    // Modalni ochish
+    document.getElementById('dayActionModal').classList.remove('hidden');
+}
+
+function closeDayActionModal() {
+    document.getElementById('dayActionModal').classList.add('hidden');
+    selectedDayForAction = null;
+    selectedEmployeeForAction = null;
+}
+
+async function setDayStatus(status) {
+    if (!selectedDayForAction || !selectedEmployeeForAction) return;
+
+    const employeeId = selectedEmployeeForAction;
+    const dateStr = selectedDayForAction;
+
+    showLoading();
+
+    try {
+        if (status === 'normal') {
+            // Bekor qilish - o'chirish
+            await API.leaves.deleteByDate(employeeId, dateStr);
+
+            if (employeeLeaves[employeeId]) {
+                delete employeeLeaves[employeeId][dateStr];
+            }
+
+            showNotification('Kun holati bekor qilindi', 'success');
+        } else {
+            // Dam olish yoki kasal deb belgilash
+            const response = await API.leaves.set(employeeId, dateStr, status);
+
+            if (!employeeLeaves[employeeId]) {
+                employeeLeaves[employeeId] = {};
+            }
+            employeeLeaves[employeeId][dateStr] = status;
+
+            const statusName = status === 'rest' ? 'Dam olish' : 'Kasal';
+            showNotification(`${statusName} deb belgilandi`, 'success');
+        }
+
+        closeDayActionModal();
+        loadCalendar(); // Kalendarni yangilash
+
+    } catch (error) {
+        console.error('Error setting day status:', error);
+        showNotification(error.message || 'Xatolik yuz berdi', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// ==========================================
+// QOLGAN FUNKSIYALAR
+// ==========================================
 
 function selectCalendarDay(date) {
     document.getElementById('selectedDate').value = date;

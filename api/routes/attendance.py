@@ -1,11 +1,17 @@
 from flask import Blueprint, request, jsonify, g
-from database import get_db, AttendanceLog, Employee, Department
+from database import get_db, AttendanceLog, Employee, Department, EmployeeLeave
 from utils.decorators import company_admin_required
 from utils.helpers import success_response, error_response, parse_date
 from datetime import datetime, date, timedelta
-from sqlalchemy import and_, func
+from sqlalchemy import and_, func, extract
 
 attendance_bp = Blueprint('attendance', __name__)
+
+# ========================================
+# OYLIK LIMITLAR
+# ========================================
+MONTHLY_REST_LIMIT = 2  # Oyiga 2 ta dam olish
+MONTHLY_SICK_LIMIT = 20  # Oyiga 20 ta kasal
 
 
 @attendance_bp.route('/today', methods=['GET'])
@@ -334,8 +340,6 @@ def get_late_employees():
         return error_response(f"Failed to get late employees: {str(e)}", 500)
 
 
-# ... existing imports ...
-
 @attendance_bp.route('/custom-range', methods=['GET'])
 @company_admin_required
 def get_custom_range_attendance():
@@ -539,3 +543,414 @@ def get_employee_calendar(employee_id):
 
     except Exception as e:
         return error_response(f"Failed to get employee calendar: {str(e)}", 500)
+
+
+# ========================================
+# YANGI - DAM OLISH VA KASAL KUNLAR API
+# ========================================
+
+@attendance_bp.route('/leaves', methods=['GET'])
+@company_admin_required
+def get_employee_leaves():
+    """
+    Xodimning dam olish va kasal kunlarini olish
+    Query params:
+    - employee_id: Xodim ID (majburiy)
+    - year: Yil (majburiy)
+    - month: Oy (majburiy)
+    """
+    try:
+        employee_id = request.args.get('employee_id')
+        year = request.args.get('year')
+        month = request.args.get('month')
+
+        if not employee_id:
+            return error_response("employee_id is required", 400)
+
+        if not year or not month:
+            return error_response("year and month are required", 400)
+
+        try:
+            year = int(year)
+            month = int(month)
+        except ValueError:
+            return error_response("year and month must be integers", 400)
+
+        db = get_db()
+
+        # Verify employee exists and belongs to company
+        employee = db.query(Employee).filter_by(
+            id=employee_id,
+            company_id=g.company_id
+        ).first()
+
+        if not employee:
+            db.close()
+            return error_response("Employee not found", 404)
+
+        # Oy boshi va oxiri
+        from calendar import monthrange
+        _, last_day = monthrange(year, month)
+        start_date = date(year, month, 1)
+        end_date = date(year, month, last_day)
+
+        # Dam olish/kasal kunlarni olish
+        leaves = db.query(EmployeeLeave).filter(
+            and_(
+                EmployeeLeave.employee_id == employee_id,
+                EmployeeLeave.company_id == g.company_id,
+                EmployeeLeave.date >= start_date,
+                EmployeeLeave.date <= end_date
+            )
+        ).order_by(EmployeeLeave.date).all()
+
+        # Oylik hisobni hisoblash
+        rest_count = len([l for l in leaves if l.leave_type == 'rest'])
+        sick_count = len([l for l in leaves if l.leave_type == 'sick'])
+
+        result = [leave.to_dict() for leave in leaves]
+
+        db.close()
+
+        return success_response({
+            'employee_id': employee_id,
+            'year': year,
+            'month': month,
+            'leaves': result,
+            'summary': {
+                'rest_count': rest_count,
+                'rest_remaining': max(0, MONTHLY_REST_LIMIT - rest_count),
+                'rest_limit': MONTHLY_REST_LIMIT,
+                'sick_count': sick_count,
+                'sick_remaining': max(0, MONTHLY_SICK_LIMIT - sick_count),
+                'sick_limit': MONTHLY_SICK_LIMIT
+            }
+        })
+
+    except Exception as e:
+        return error_response(f"Failed to get employee leaves: {str(e)}", 500)
+
+
+@attendance_bp.route('/leaves', methods=['POST'])
+@company_admin_required
+def set_employee_leave():
+    """
+    Xodimga dam olish yoki kasal kun belgilash
+    Body:
+    - employee_id: Xodim ID
+    - date: Sana (YYYY-MM-DD)
+    - type: 'rest' yoki 'sick'
+    - reason: Izoh (ixtiyoriy)
+    """
+    try:
+        data = request.get_json()
+
+        employee_id = data.get('employee_id')
+        date_str = data.get('date')
+        leave_type = data.get('type')
+        reason = data.get('reason', '')
+
+        if not employee_id:
+            return error_response("employee_id is required", 400)
+
+        if not date_str:
+            return error_response("date is required", 400)
+
+        if not leave_type:
+            return error_response("type is required (rest or sick)", 400)
+
+        if leave_type not in ['rest', 'sick']:
+            return error_response("type must be 'rest' or 'sick'", 400)
+
+        # Parse date
+        leave_date = parse_date(date_str)
+        if not leave_date:
+            return error_response("Invalid date format. Use YYYY-MM-DD", 400)
+
+        db = get_db()
+
+        # Verify employee exists and belongs to company
+        employee = db.query(Employee).filter_by(
+            id=employee_id,
+            company_id=g.company_id
+        ).first()
+
+        if not employee:
+            db.close()
+            return error_response("Employee not found", 404)
+
+        # Oylik limitni tekshirish
+        year = leave_date.year
+        month = leave_date.month
+
+        from calendar import monthrange
+        _, last_day = monthrange(year, month)
+        start_date = date(year, month, 1)
+        end_date = date(year, month, last_day)
+
+        # Bu oydagi barcha dam olish/kasal kunlarni olish
+        existing_leaves = db.query(EmployeeLeave).filter(
+            and_(
+                EmployeeLeave.employee_id == employee_id,
+                EmployeeLeave.company_id == g.company_id,
+                EmployeeLeave.date >= start_date,
+                EmployeeLeave.date <= end_date
+            )
+        ).all()
+
+        # Shu sana allaqachon belgilangan mi?
+        existing_for_date = db.query(EmployeeLeave).filter(
+            and_(
+                EmployeeLeave.employee_id == employee_id,
+                EmployeeLeave.date == leave_date
+            )
+        ).first()
+
+        if existing_for_date:
+            # Agar mavjud bo'lsa, yangilash
+            old_type = existing_for_date.leave_type
+
+            # Agar tur o'zgarmagan bo'lsa, hech narsa qilmaymiz
+            if old_type == leave_type:
+                db.close()
+                return success_response({
+                    'message': 'Leave already set for this date',
+                    'leave': existing_for_date.to_dict()
+                })
+
+            # Yangi turda limit tekshirish (eski turdan tashqari)
+            if leave_type == 'rest':
+                rest_count = len(
+                    [l for l in existing_leaves if l.leave_type == 'rest' and l.id != existing_for_date.id])
+                if rest_count >= MONTHLY_REST_LIMIT:
+                    db.close()
+                    return error_response(f"Oylik dam olish limiti tugagan ({MONTHLY_REST_LIMIT} ta)", 400)
+            else:  # sick
+                sick_count = len(
+                    [l for l in existing_leaves if l.leave_type == 'sick' and l.id != existing_for_date.id])
+                if sick_count >= MONTHLY_SICK_LIMIT:
+                    db.close()
+                    return error_response(f"Oylik kasal limiti tugagan ({MONTHLY_SICK_LIMIT} ta)", 400)
+
+            # Yangilash
+            existing_for_date.leave_type = leave_type
+            existing_for_date.reason = reason
+            db.commit()
+
+            result = existing_for_date.to_dict()
+            db.close()
+
+            return success_response({
+                'message': 'Leave updated successfully',
+                'leave': result
+            })
+        else:
+            # Yangi leave qo'shish - limit tekshirish
+            if leave_type == 'rest':
+                rest_count = len([l for l in existing_leaves if l.leave_type == 'rest'])
+                if rest_count >= MONTHLY_REST_LIMIT:
+                    db.close()
+                    return error_response(f"Oylik dam olish limiti tugagan ({MONTHLY_REST_LIMIT} ta)", 400)
+            else:  # sick
+                sick_count = len([l for l in existing_leaves if l.leave_type == 'sick'])
+                if sick_count >= MONTHLY_SICK_LIMIT:
+                    db.close()
+                    return error_response(f"Oylik kasal limiti tugagan ({MONTHLY_SICK_LIMIT} ta)", 400)
+
+            # Yangi leave yaratish
+            new_leave = EmployeeLeave(
+                company_id=g.company_id,
+                employee_id=employee_id,
+                date=leave_date,
+                leave_type=leave_type,
+                reason=reason,
+                created_by=g.admin_id if hasattr(g, 'admin_id') else None
+            )
+
+            db.add(new_leave)
+            db.commit()
+
+            result = new_leave.to_dict()
+            db.close()
+
+            return success_response({
+                'message': 'Leave created successfully',
+                'leave': result
+            }, 201)
+
+    except Exception as e:
+        return error_response(f"Failed to set employee leave: {str(e)}", 500)
+
+
+@attendance_bp.route('/leaves/<leave_id>', methods=['DELETE'])
+@company_admin_required
+def delete_employee_leave(leave_id):
+    """
+    Dam olish yoki kasal kunni o'chirish (bekor qilish)
+    """
+    try:
+        db = get_db()
+
+        # Leave ni topish
+        leave = db.query(EmployeeLeave).filter(
+            and_(
+                EmployeeLeave.id == leave_id,
+                EmployeeLeave.company_id == g.company_id
+            )
+        ).first()
+
+        if not leave:
+            db.close()
+            return error_response("Leave not found", 404)
+
+        # O'chirish
+        db.delete(leave)
+        db.commit()
+        db.close()
+
+        return success_response({
+            'message': 'Leave deleted successfully'
+        })
+
+    except Exception as e:
+        return error_response(f"Failed to delete leave: {str(e)}", 500)
+
+
+@attendance_bp.route('/leaves/by-date', methods=['DELETE'])
+@company_admin_required
+def delete_employee_leave_by_date():
+    """
+    Dam olish yoki kasal kunni sana bo'yicha o'chirish
+    Query params:
+    - employee_id: Xodim ID
+    - date: Sana (YYYY-MM-DD)
+    """
+    try:
+        employee_id = request.args.get('employee_id')
+        date_str = request.args.get('date')
+
+        if not employee_id:
+            return error_response("employee_id is required", 400)
+
+        if not date_str:
+            return error_response("date is required", 400)
+
+        leave_date = parse_date(date_str)
+        if not leave_date:
+            return error_response("Invalid date format. Use YYYY-MM-DD", 400)
+
+        db = get_db()
+
+        # Leave ni topish
+        leave = db.query(EmployeeLeave).filter(
+            and_(
+                EmployeeLeave.employee_id == employee_id,
+                EmployeeLeave.date == leave_date,
+                EmployeeLeave.company_id == g.company_id
+            )
+        ).first()
+
+        if not leave:
+            db.close()
+            return error_response("Leave not found for this date", 404)
+
+        # O'chirish
+        db.delete(leave)
+        db.commit()
+        db.close()
+
+        return success_response({
+            'message': 'Leave deleted successfully'
+        })
+
+    except Exception as e:
+        return error_response(f"Failed to delete leave: {str(e)}", 500)
+
+
+@attendance_bp.route('/leaves/summary', methods=['GET'])
+@company_admin_required
+def get_leaves_summary():
+    """
+    Xodimning oylik dam olish va kasal kunlar statistikasi
+    Query params:
+    - employee_id: Xodim ID (majburiy)
+    - year: Yil (majburiy)
+    - month: Oy (majburiy)
+    """
+    try:
+        employee_id = request.args.get('employee_id')
+        year = request.args.get('year')
+        month = request.args.get('month')
+
+        if not employee_id:
+            return error_response("employee_id is required", 400)
+
+        if not year or not month:
+            return error_response("year and month are required", 400)
+
+        try:
+            year = int(year)
+            month = int(month)
+        except ValueError:
+            return error_response("year and month must be integers", 400)
+
+        db = get_db()
+
+        # Verify employee
+        employee = db.query(Employee).filter_by(
+            id=employee_id,
+            company_id=g.company_id
+        ).first()
+
+        if not employee:
+            db.close()
+            return error_response("Employee not found", 404)
+
+        # Oy boshi va oxiri
+        from calendar import monthrange
+        _, last_day = monthrange(year, month)
+        start_date = date(year, month, 1)
+        end_date = date(year, month, last_day)
+
+        # Dam olish/kasal kunlarni hisoblash
+        rest_count = db.query(EmployeeLeave).filter(
+            and_(
+                EmployeeLeave.employee_id == employee_id,
+                EmployeeLeave.company_id == g.company_id,
+                EmployeeLeave.date >= start_date,
+                EmployeeLeave.date <= end_date,
+                EmployeeLeave.leave_type == 'rest'
+            )
+        ).count()
+
+        sick_count = db.query(EmployeeLeave).filter(
+            and_(
+                EmployeeLeave.employee_id == employee_id,
+                EmployeeLeave.company_id == g.company_id,
+                EmployeeLeave.date >= start_date,
+                EmployeeLeave.date <= end_date,
+                EmployeeLeave.leave_type == 'sick'
+            )
+        ).count()
+
+        db.close()
+
+        return success_response({
+            'employee_id': employee_id,
+            'employee_name': employee.full_name,
+            'year': year,
+            'month': month,
+            'rest': {
+                'used': rest_count,
+                'remaining': max(0, MONTHLY_REST_LIMIT - rest_count),
+                'limit': MONTHLY_REST_LIMIT
+            },
+            'sick': {
+                'used': sick_count,
+                'remaining': max(0, MONTHLY_SICK_LIMIT - sick_count),
+                'limit': MONTHLY_SICK_LIMIT
+            }
+        })
+
+    except Exception as e:
+        return error_response(f"Failed to get leaves summary: {str(e)}", 500)

@@ -180,6 +180,14 @@ const API = {
             return apiRequest(`/api/branches?${queryString}`);
         },
 
+        // YANGI: getAll - list ning aliasi (salary.html uchun)
+        getAll: async (params = {}) => {
+            const queryString = new URLSearchParams(params).toString();
+            const response = await apiRequest(`/api/branches?${queryString}`);
+            // API {branches: [...]} yoki [...] qaytarishi mumkin
+            return response.branches || response || [];
+        },
+
         get: (id) => apiRequest(`/api/branches/${id}`),
 
         create: (data) => apiRequest('/api/branches', {
@@ -206,6 +214,13 @@ const API = {
             return apiRequest(`/api/departments?${queryString}`);
         },
 
+        // YANGI: getAll - list ning aliasi
+        getAll: async (params = {}) => {
+            const queryString = new URLSearchParams(params).toString();
+            const response = await apiRequest(`/api/departments?${queryString}`);
+            return response.departments || response || [];
+        },
+
         get: (id) => apiRequest(`/api/departments/${id}`),
 
         create: (data) => apiRequest('/api/departments', {
@@ -228,6 +243,13 @@ const API = {
         list: (params = {}) => {
             const queryString = new URLSearchParams(params).toString();
             return apiRequest(`/api/employees?${queryString}`);
+        },
+
+        // YANGI: getAll - list ning aliasi
+        getAll: async (params = {}) => {
+            const queryString = new URLSearchParams(params).toString();
+            const response = await apiRequest(`/api/employees?${queryString}`);
+            return response.employees || response || [];
         },
 
         get: (id) => apiRequest(`/api/employees/${id}`),
@@ -289,6 +311,48 @@ const API = {
             method: 'POST',
             body: JSON.stringify(data)
         })
+    },
+
+    // ==========================================
+    // YANGI: Leaves (Dam olish / Kasal kunlar)
+    // ==========================================
+    leaves: {
+        // Xodimning dam olish/kasal kunlarini olish
+        getByEmployee: (employeeId, year, month) => {
+            return apiRequest(`/api/attendance/leaves?employee_id=${employeeId}&year=${year}&month=${month}`);
+        },
+
+        // Dam olish/kasal kun belgilash
+        set: (employeeId, date, type, reason = '') => {
+            return apiRequest('/api/attendance/leaves', {
+                method: 'POST',
+                body: JSON.stringify({
+                    employee_id: employeeId,
+                    date: date,
+                    type: type,
+                    reason: reason
+                })
+            });
+        },
+
+        // ID bo'yicha o'chirish
+        delete: (leaveId) => {
+            return apiRequest(`/api/attendance/leaves/${leaveId}`, {
+                method: 'DELETE'
+            });
+        },
+
+        // Sana bo'yicha o'chirish
+        deleteByDate: (employeeId, date) => {
+            return apiRequest(`/api/attendance/leaves/by-date?employee_id=${employeeId}&date=${date}`, {
+                method: 'DELETE'
+            });
+        },
+
+        // Oylik statistika
+        getSummary: (employeeId, year, month) => {
+            return apiRequest(`/api/attendance/leaves/summary?employee_id=${employeeId}&year=${year}&month=${month}`);
+        }
     },
 
     // Penalties
@@ -399,19 +463,21 @@ const API = {
             body: JSON.stringify(data)
         }),
 
-        monthlyReport: (data) => apiRequest('/api/salary/monthly-report', {
+        // ESKI: monthlyReport - endi bulk-calculate ga yo'naltiriladi
+        monthlyReport: (data) => apiRequest('/api/salary/bulk-calculate', {
             method: 'POST',
             body: JSON.stringify(data)
         }),
 
-        customReport: (data) => apiRequest('/api/salary/custom-report', {
+        // ESKI: customReport - endi bulk-calculate ga yo'naltiriladi
+        customReport: (data) => apiRequest('/api/salary/bulk-calculate', {
             method: 'POST',
             body: JSON.stringify(data)
         }),
 
         getLateRanking: (params = {}) => {
             const queryString = new URLSearchParams(params).toString();
-            return apiRequest(`/api/salary/late-ranking?${queryString}`);
+            return apiRequest(`/api/salary/attendance-ranking?${queryString}`);
         },
 
         getAttendanceRanking: (params = {}) => {
@@ -422,6 +488,12 @@ const API = {
         getPayrollSummary: (params = {}) => {
             const queryString = new URLSearchParams(params).toString();
             return apiRequest(`/api/salary/payroll-summary?${queryString}`);
+        },
+
+        // YANGI: Xodim oylik tarixi
+        getHistory: (employeeId, params = {}) => {
+            const queryString = new URLSearchParams(params).toString();
+            return apiRequest(`/api/salary/employee/${employeeId}/history?${queryString}`);
         }
     },
 
@@ -494,6 +566,41 @@ const API = {
                 const a = document.createElement('a');
                 a.href = downloadUrl;
                 a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(downloadUrl);
+                document.body.removeChild(a);
+
+                return true;
+            } catch (error) {
+                console.error('Export error:', error);
+                throw error;
+            }
+        },
+
+        // YANGI: Oylik eksport
+        salary: async (params = {}) => {
+            try {
+                const queryString = new URLSearchParams(params).toString();
+                const url = `/api/export/salary?${queryString}`;
+
+                const token = getToken();
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Export failed');
+                }
+
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `Oylik_${params.start_date}_${params.end_date}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(downloadUrl);

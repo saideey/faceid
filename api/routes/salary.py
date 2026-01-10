@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, g
-from database import get_db, Employee, Penalty, Bonus, AttendanceLog, CompanySettings, EmployeeSchedule
+from database import get_db, Employee, Penalty, Bonus, AttendanceLog, CompanySettings, EmployeeSchedule, EmployeeLeave
 from middleware.auth_middleware import require_auth
 from middleware.company_middleware import load_company_context
 from utils.helpers import success_response, error_response
@@ -13,7 +13,59 @@ salary_bp = Blueprint('salary', __name__)
 logger = logging.getLogger(__name__)
 
 
-def get_employee_expected_days(employee, start_date, end_date, for_daily_rate=False):
+def get_employee_leaves_for_period(employee_id, company_id, start_date, end_date, db=None):
+    """
+    Xodimning dam olish va kasal kunlarini olish
+
+    Returns: {
+        'dates': {'2025-01-15': 'rest', '2025-01-20': 'sick', ...},
+        'rest_count': int,
+        'sick_count': int,
+        'total_count': int
+    }
+    """
+    # Agar db berilmagan bo'lsa, yangi session ochish
+    should_close_db = False
+    if db is None:
+        db = get_db()
+        should_close_db = True
+
+    try:
+        leaves = db.query(EmployeeLeave).filter(
+            and_(
+                EmployeeLeave.employee_id == employee_id,
+                EmployeeLeave.company_id == company_id,
+                EmployeeLeave.date >= start_date,
+                EmployeeLeave.date <= end_date
+            )
+        ).all()
+
+        dates = {}
+        rest_count = 0
+        sick_count = 0
+
+        for leave in leaves:
+            date_str = leave.date.isoformat()
+            dates[date_str] = leave.leave_type
+
+            if leave.leave_type == 'rest':
+                rest_count += 1
+            elif leave.leave_type == 'sick':
+                sick_count += 1
+
+        return {
+            'dates': dates,
+            'rest_count': rest_count,
+            'sick_count': sick_count,
+            'total_count': rest_count + sick_count
+        }
+    finally:
+        # Faqat bu funksiya ochgan bo'lsa yopish
+        if should_close_db:
+            db.close()
+
+
+def get_employee_expected_days(employee, start_date, end_date, for_daily_rate=False, db=None):
     """
     Xodimning schedule asosida expected work days hisoblash
 
@@ -24,6 +76,7 @@ def get_employee_expected_days(employee, start_date, end_date, for_daily_rate=Fa
         start_date: Boshlanish sanasi
         end_date: Tugash sanasi
         for_daily_rate: Agar True bo'lsa, to'liq oy asosida hisoblaydi
+        db: Database session (optional)
 
     Returns: (expected_days, schedule_dict)
     schedule_dict = {
@@ -33,7 +86,11 @@ def get_employee_expected_days(employee, start_date, end_date, for_daily_rate=Fa
         5: {'start': None, 'end': None, 'is_off': True},  # Friday (dam olish)
     }
     """
-    db = get_db()
+    # Agar db berilmagan bo'lsa, yangi session ochish
+    should_close_db = False
+    if db is None:
+        db = get_db()
+        should_close_db = True
 
     # Get employee schedules
     schedules = db.query(EmployeeSchedule).filter_by(employee_id=employee.id).all()
@@ -86,40 +143,64 @@ def get_employee_expected_days(employee, start_date, end_date, for_daily_rate=Fa
 
         current += timedelta(days=1)
 
-    db.close()
+    # Faqat bu funksiya ochgan bo'lsa yopish
+    if should_close_db:
+        db.close()
     return expected_days, schedule_dict
 
 
-def calculate_employee_salary(employee, start_date, end_date, company_settings):
+def calculate_employee_salary(employee, start_date, end_date, company_settings, db=None):
     """
     PROFESSIONAL xodim oyligini hisoblash
+
+    YANGI: Dam olish va kasal kunlari uchun jarima hisoblanmaydi!
 
     QOIDA:
     1. Kunlik stavka DOIM to'liq oy asosida hisoblanadi
     2. Ishlangan kunlar faqat sana oralig'ida hisoblanadi
     3. Har bir jarima/bonus batafsil ko'rsatiladi
+    4. Dam olish/kasal kunlari uchun jarima hisoblanmaydi
 
     Returns: {
         'base_salary': float,
         'salary_type': 'monthly' or 'daily',
         'calculation_method': 'full_month_based',
-        'full_month_work_days': int,  # To'liq oyda nechta ish kuni
-        'daily_rate': float,  # Kunlik stavka (to'liq oy asosida)
-        'period_work_days': int,  # Sana oralig'ida nechta ish kuni
+        'full_month_work_days': int,
+        'daily_rate': float,
+        'period_work_days': int,
         'worked_days': int,
         'absence_days': int,
-        'late_details': [...],  # Har bir kech qolish sanasi bilan
+        'late_details': [...],
+        'excused_days': [...],  # YANGI - Dam olish/kasal kunlari
         'calculated_salary': float,
         'final_salary': float,
         'detailed_breakdown': {...}
     }
     """
-    db = get_db()
+    # Agar db berilmagan bo'lsa, yangi session ochish
+    should_close_db = False
+    if db is None:
+        db = get_db()
+        should_close_db = True
 
     try:
         # Base salary
         base_salary = employee.salary or 0
         salary_type = employee.salary_type or 'monthly'
+
+        # ==========================================
+        # YANGI: Dam olish va kasal kunlarini olish
+        # ==========================================
+        employee_leaves = get_employee_leaves_for_period(
+            employee.id,
+            employee.company_id,
+            start_date,
+            end_date,
+            db  # db ni parametr sifatida berish
+        )
+        leave_dates = employee_leaves['dates']  # {'2025-01-15': 'rest', ...}
+
+        logger.info(f"🏖️ {employee.full_name}: {employee_leaves['total_count']} ta dam olish/kasal kun")
 
         # Get attendance logs for the period
         attendance_logs = db.query(AttendanceLog).filter(
@@ -135,6 +216,7 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
 
         # Get late details per date
         late_details = []
+        excused_days = []  # YANGI - Jarima hisoblanmagan kunlar
         total_late_minutes = 0
 
         # Get employee schedule to check off days
@@ -149,6 +231,8 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
 
         for log in attendance_logs:
             if log.late_minutes and log.late_minutes > 0:
+                date_str = log.date.isoformat()
+
                 # Check if this day is an off day for the employee
                 day_of_week = log.date.isoweekday()  # 1=Mon, 7=Sun
                 is_off_day = schedule_dict.get(day_of_week, False)
@@ -156,18 +240,55 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
                 # Check if before hire date
                 is_before_hire = employee.hire_date and log.date < employee.hire_date
 
+                # ==========================================
+                # YANGI: Dam olish yoki kasal kuni tekshirish
+                # ==========================================
+                is_leave_day = date_str in leave_dates
+                leave_type = leave_dates.get(date_str, None)
+
                 # Only count late minutes if:
                 # 1. Not an off day
                 # 2. Not before hire date
-                if not is_off_day and not is_before_hire:
+                # 3. NOT a leave day (rest or sick)
+                if is_off_day:
+                    excused_days.append({
+                        'date': date_str,
+                        'reason': 'off_day',
+                        'reason_text': 'Dam olish kuni (jadval)',
+                        'late_minutes': log.late_minutes,
+                        'penalty_saved': 0  # Will be calculated below
+                    })
+                    logger.info(f"⚪ {log.date}: Late ignored - Off day")
+                elif is_before_hire:
+                    excused_days.append({
+                        'date': date_str,
+                        'reason': 'before_hire',
+                        'reason_text': 'Ishga kirish sanasidan oldin',
+                        'late_minutes': log.late_minutes,
+                        'penalty_saved': 0
+                    })
+                    logger.info(f"⚪ {log.date}: Late ignored - Before hire date")
+                elif is_leave_day:
+                    # ==========================================
+                    # YANGI: Dam olish/kasal kun - jarima yo'q
+                    # ==========================================
+                    reason_text = 'Dam olish kuni' if leave_type == 'rest' else 'Kasal kuni'
+                    excused_days.append({
+                        'date': date_str,
+                        'reason': leave_type,  # 'rest' or 'sick'
+                        'reason_text': reason_text,
+                        'late_minutes': log.late_minutes,
+                        'penalty_saved': 0  # Will be calculated below
+                    })
+                    logger.info(f"🏖️ {log.date}: Late ignored - {reason_text} ({log.late_minutes} min)")
+                else:
+                    # Normal work day - count late penalty
                     late_details.append({
-                        'date': log.date.isoformat(),
+                        'date': date_str,
                         'late_minutes': log.late_minutes,
                         'check_in_time': str(log.check_in_time) if log.check_in_time else None
                     })
                     total_late_minutes += log.late_minutes
-                else:
-                    logger.info(f"⚪ {log.date}: Late ignored - {'Off day' if is_off_day else 'Before hire date'}")
 
         # Calculate automatic late penalty
         auto_late_penalty = 0
@@ -178,6 +299,13 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
                 auto_late_penalty = total_late_minutes * late_penalty_per_minute
                 logger.info(
                     f"🔴 Late penalty: {total_late_minutes} min × {late_penalty_per_minute:,.0f} = {auto_late_penalty:,.0f}")
+
+        # ==========================================
+        # YANGI: Excused days uchun penalty_saved hisoblash
+        # ==========================================
+        if late_penalty_per_minute > 0:
+            for excused in excused_days:
+                excused['penalty_saved'] = excused['late_minutes'] * late_penalty_per_minute
 
         # Get manual penalties
         penalties = db.query(Penalty).filter(
@@ -202,9 +330,8 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
         # === PROFESSIONAL MONTHLY CALCULATION ===
         if salary_type == 'monthly':
             # STEP 1: Calculate DAILY RATE based on FULL MONTH
-            # QOIDA: Kunlik stavka DOIM to'liq oy asosida hisoblanadi!
-            full_month_work_days, schedule_dict = get_employee_expected_days(
-                employee, start_date, end_date, for_daily_rate=True
+            full_month_work_days, schedule_dict_full = get_employee_expected_days(
+                employee, start_date, end_date, for_daily_rate=True, db=db
             )
 
             if full_month_work_days > 0:
@@ -236,7 +363,7 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
                     f"⚪ Adjusted start: {start_date} → {effective_start_date} (hire date: {employee.hire_date})")
 
             period_expected_days, _ = get_employee_expected_days(
-                employee, effective_start_date, actual_end_date, for_daily_rate=False
+                employee, effective_start_date, actual_end_date, for_daily_rate=False, db=db
             )
 
             logger.info(f"📅 DAVR: {effective_start_date} to {actual_end_date}")
@@ -246,17 +373,66 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
             # STEP 3: Calculate salary for worked days
             calculated_salary = daily_rate * worked_days
 
-            # STEP 4: Calculate absence penalty (only for days after hire_date)
-            absence_days = max(0, period_expected_days - worked_days)
+            # ==========================================
+            # YANGI: Absence penalty - dam olish/kasal kunlarni hisobga olmaslik
+            # ==========================================
+            # Dam olish va kasal kunlar soni
+            leave_days_count = employee_leaves['total_count']
+
+            # Haqiqiy yo'q bo'lgan kunlar = kutilgan - ishlangan - dam olish/kasal
+            # Bu kunlar uchun JARIMA hisoblanadi
+            actual_absence_days = max(0, period_expected_days - worked_days - leave_days_count)
+
+            # Dam olish/kasal kunlar - bu kunlar uchun jarima YO'Q
+            # Ular ishga kelgan deb hisoblanadi
+
             absence_penalty = 0
-            if company_settings and absence_days > 0:
+            absence_penalty_per_day = 0
+            if company_settings and actual_absence_days > 0:
                 absence_penalty_per_day = getattr(company_settings, 'absence_penalty_amount', 0)
                 if absence_penalty_per_day > 0:
-                    absence_penalty = absence_days * absence_penalty_per_day
+                    absence_penalty = actual_absence_days * absence_penalty_per_day
                     logger.info(
-                        f"⚠️ Kelmaslik: {absence_days} kun × {absence_penalty_per_day:,.0f} = {absence_penalty:,.0f}")
+                        f"⚠️ Kelmaslik: {actual_absence_days} kun × {absence_penalty_per_day:,.0f} = {absence_penalty:,.0f}")
+                    logger.info(
+                        f"🏖️ Dam olish/kasal: {leave_days_count} kun - JARIMA YO'Q")
+
+            # ==========================================
+            # YANGI: Kelmagan kunlar uchun excused_days ga qo'shish
+            # ==========================================
+            # Qaysi kunlarda kelmagan va u dam olish/kasal deb belgilangan
+            current_date = effective_start_date
+            attendance_dates = {log.date for log in attendance_logs}
+
+            while current_date <= actual_end_date:
+                date_str = current_date.isoformat()
+                day_of_week = current_date.isoweekday()
+                is_schedule_off = schedule_dict.get(day_of_week, False)
+
+                # Agar ish kuni bo'lsa va kelmagan bo'lsa
+                if not is_schedule_off and current_date not in attendance_dates:
+                    # Dam olish yoki kasal deb belgilanganmi?
+                    if date_str in leave_dates:
+                        leave_type = leave_dates[date_str]
+                        reason_text = 'Dam olish kuni' if leave_type == 'rest' else 'Kasal kuni'
+
+                        # Allaqachon qo'shilmaganligini tekshirish
+                        already_added = any(e['date'] == date_str for e in excused_days)
+                        if not already_added:
+                            excused_days.append({
+                                'date': date_str,
+                                'reason': leave_type,
+                                'reason_text': f"{reason_text} - kelmaslik jarimasi hisoblanmadi",
+                                'late_minutes': 0,
+                                'penalty_saved': absence_penalty_per_day,
+                                'type': 'absence'  # Kelmagan kun
+                            })
+                            logger.info(f"🏖️ {current_date}: Absence excused - {reason_text}")
+
+                current_date += timedelta(days=1)
 
             expected_days = period_expected_days
+            absence_days = actual_absence_days  # Faqat haqiqiy yo'q kunlar
 
         else:
             # Daily salary
@@ -266,6 +442,7 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
             absence_days = 0
             expected_days = 0
             full_month_work_days = 0
+            leave_days_count = employee_leaves['total_count']
             # Initialize variables for breakdown (not used for daily salary)
             full_month_start = start_date
             full_month_end = end_date
@@ -280,6 +457,11 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
         # Make sure final salary is not negative
         if final_salary < 0:
             final_salary = 0
+
+        # ==========================================
+        # YANGI: Excused summary
+        # ==========================================
+        total_penalty_saved = sum(e.get('penalty_saved', 0) for e in excused_days)
 
         return {
             'base_salary': base_salary,
@@ -296,6 +478,15 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
             'expected_days': expected_days,
             'absence_days': absence_days,
 
+            # ==========================================
+            # YANGI: Dam olish/kasal kunlar
+            # ==========================================
+            'leave_days': {
+                'rest_count': employee_leaves['rest_count'],
+                'sick_count': employee_leaves['sick_count'],
+                'total_count': employee_leaves['total_count']
+            },
+
             # Work details
             'total_work_hours': total_work_hours,
 
@@ -308,6 +499,18 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
             'manual_penalty': round(manual_penalty_amount, 2),
             'penalty_count': len(penalties),
             'penalty_amount': round(total_penalty_amount, 2),
+
+            # ==========================================
+            # YANGI: Jarima hisoblanmagan kunlar
+            # ==========================================
+            'excused_days': excused_days,
+            'excused_summary': {
+                'total_days': len(excused_days),
+                'rest_days': len([e for e in excused_days if e.get('reason') == 'rest']),
+                'sick_days': len([e for e in excused_days if e.get('reason') == 'sick']),
+                'off_days': len([e for e in excused_days if e.get('reason') == 'off_day']),
+                'total_penalty_saved': round(total_penalty_saved, 2)
+            },
 
             # Bonuses
             'bonus_count': len(bonuses),
@@ -324,7 +527,7 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
                     'total_days': (full_month_end - full_month_start).days + 1 if salary_type == 'monthly' else None,
                     'work_days': full_month_work_days,
                     'off_days': ((
-                                             full_month_end - full_month_start).days + 1 - full_month_work_days) if salary_type == 'monthly' else None
+                                         full_month_end - full_month_start).days + 1 - full_month_work_days) if salary_type == 'monthly' else None
                 },
                 'step_2_daily_rate': {
                     'base_salary': base_salary,
@@ -336,7 +539,11 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
                     'period': f"{start_date} to {actual_end_date if salary_type == 'monthly' else end_date}",
                     'expected_work_days': expected_days,
                     'worked_days': worked_days,
-                    'absence_days': absence_days
+                    'absence_days': absence_days,
+                    # YANGI
+                    'leave_days': employee_leaves['total_count'],
+                    'leave_note': f"Dam olish: {employee_leaves['rest_count']}, Kasal: {employee_leaves['sick_count']} - jarima hisoblanmadi" if
+                    employee_leaves['total_count'] > 0 else None
                 },
                 'step_4_gross_salary': {
                     'daily_rate': round(daily_rate, 2),
@@ -349,13 +556,19 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
                         'total_minutes': total_late_minutes,
                         'rate_per_minute': late_penalty_per_minute,
                         'amount': round(auto_late_penalty, 2),
-                        'details': late_details
+                        'details': late_details,
+                        # YANGI
+                        'excused_note': f"{len([e for e in excused_days if e.get('late_minutes', 0) > 0])} kun kechikish jarima hisoblanmadi" if any(
+                            e.get('late_minutes', 0) > 0 for e in excused_days) else None
                     },
                     'absence_penalty': {
                         'days': absence_days,
                         'rate_per_day': getattr(company_settings, 'absence_penalty_amount',
                                                 0) if company_settings else 0,
-                        'amount': round(absence_penalty, 2)
+                        'amount': round(absence_penalty, 2),
+                        # YANGI
+                        'excused_note': f"{employee_leaves['total_count']} kun kelmaslik jarima hisoblanmadi (dam olish/kasal)" if
+                        employee_leaves['total_count'] > 0 else None
                     },
                     'manual_penalties': {
                         'count': len(penalties),
@@ -373,160 +586,21 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings):
                     'bonuses': round(total_bonus_amount, 2),
                     'net_salary': round(final_salary, 2),
                     'formula': f"{calculated_salary:,.2f} - {total_penalty_amount:,.2f} + {total_bonus_amount:,.2f} = {final_salary:,.2f}"
+                },
+                # YANGI
+                'step_8_excused_summary': {
+                    'title': 'Jarima hisoblanmagan kunlar',
+                    'days': excused_days,
+                    'total_saved': round(total_penalty_saved, 2),
+                    'note': f"Jami {len(excused_days)} kun uchun {total_penalty_saved:,.0f} so'm jarima hisoblanmadi" if excused_days else "Barcha kunlar uchun jarima hisoblanadi"
                 }
             }
         }
 
     finally:
-        db.close()
-    """
-    Xodimning oyligini hisoblash
-
-    Returns: {
-        'base_salary': float,
-        'salary_type': 'monthly' or 'daily',
-        'worked_days': int,
-        'total_work_hours': float,
-        'late_minutes': int,
-        'penalty_amount': float,
-        'bonus_amount': float,
-        'final_salary': float,
-        'deduction_details': {...},
-        'breakdown': {...}
-    }
-    """
-    db = get_db()
-
-    try:
-        # Base salary
-        base_salary = employee.salary or 0
-        salary_type = employee.salary_type or 'monthly'
-
-        # Get attendance logs for the period
-        attendance_logs = db.query(AttendanceLog).filter(
-            AttendanceLog.employee_id == employee.id,
-            AttendanceLog.date >= start_date,
-            AttendanceLog.date <= end_date
-        ).all()
-
-        # Calculate worked days and hours
-        worked_days = len(attendance_logs)
-        total_work_minutes = sum(log.total_work_minutes or 0 for log in attendance_logs)
-        total_work_hours = round(total_work_minutes / 60, 2)
-
-        # Calculate total late minutes
-        total_late_minutes = sum(log.late_minutes or 0 for log in attendance_logs)
-
-        # Calculate automatic late penalty based on company settings
-        auto_late_penalty = 0
-        if company_settings and company_settings.auto_penalty_enabled:
-            late_penalty_per_minute = company_settings.late_penalty_per_minute or 0
-            if late_penalty_per_minute > 0 and total_late_minutes > 0:
-                auto_late_penalty = total_late_minutes * late_penalty_per_minute
-                logger.info(
-                    f"🔴 Auto late penalty: {total_late_minutes} min × {late_penalty_per_minute:,.0f} = {auto_late_penalty:,.0f} UZS")
-
-        # Get manual penalties from database (faqat active penalties - waived va excused emas)
-        penalties = db.query(Penalty).filter(
-            Penalty.employee_id == employee.id,
-            Penalty.date >= start_date,
-            Penalty.date <= end_date,
-            Penalty.is_waived == False,
-            Penalty.is_excused == False
-        ).all()
-
-        # Total penalty = manual penalties + auto late penalty
-        manual_penalty_amount = sum(p.amount for p in penalties)
-        total_penalty_amount = manual_penalty_amount + auto_late_penalty
-
-        # Get bonuses
-        bonuses = db.query(Bonus).filter(
-            Bonus.employee_id == employee.id,
-            Bonus.date >= start_date,
-            Bonus.date <= end_date
-        ).all()
-
-        total_bonus_amount = sum(b.amount for b in bonuses)
-
-        # Calculate salary based on type
-        if salary_type == 'monthly':
-            # Monthly salary - use employee's individual schedule
-            expected_days, schedule_dict = get_employee_expected_days(employee, start_date, end_date)
-
-            logger.info(f"📅 {employee.full_name}: expected={expected_days}, worked={worked_days}")
-
-            # Calculate absence penalty for days not worked (only for past days)
-            absence_days = max(0, expected_days - worked_days)
-            absence_penalty = 0
-            if company_settings and absence_days > 0:
-                absence_penalty_per_day = getattr(company_settings, 'absence_penalty_amount', 0)
-                if absence_penalty_per_day > 0:
-                    absence_penalty = absence_days * absence_penalty_per_day
-                    logger.info(
-                        f"⚠️ Absence penalty: {absence_days} days × {absence_penalty_per_day:,.0f} = {absence_penalty:,.0f} UZS")
-
-            # Calculate based on worked days
-            if expected_days > 0:
-                daily_rate = base_salary / expected_days
-                calculated_salary = daily_rate * worked_days
-                logger.info(
-                    f"💰 Salary: {base_salary:,.0f} / {expected_days} days × {worked_days} = {calculated_salary:,.0f}")
-            else:
-                calculated_salary = base_salary
-
-        else:
-            # Daily salary
-            calculated_salary = base_salary * worked_days
-            absence_penalty = 0
-            expected_days = 0
-            absence_days = 0
-
-        # Total penalty = manual + auto late + absence
-        total_penalty_amount = manual_penalty_amount + auto_late_penalty + absence_penalty
-
-        # Final salary = calculated - penalties + bonuses
-        final_salary = calculated_salary - total_penalty_amount + total_bonus_amount
-
-        # Make sure final salary is not negative
-        if final_salary < 0:
-            final_salary = 0
-
-        return {
-            'base_salary': base_salary,
-            'salary_type': salary_type,
-            'worked_days': worked_days,
-            'expected_days': expected_days if salary_type == 'monthly' else None,
-            'absence_days': absence_days if salary_type == 'monthly' else 0,
-            'total_work_hours': total_work_hours,
-            'late_minutes': total_late_minutes,
-            'penalty_count': len(penalties),
-            'penalty_amount': total_penalty_amount,
-            'auto_late_penalty': auto_late_penalty,
-            'absence_penalty': absence_penalty if salary_type == 'monthly' else 0,
-            'manual_penalty': manual_penalty_amount,
-            'bonus_count': len(bonuses),
-            'bonus_amount': total_bonus_amount,
-            'calculated_salary': calculated_salary,
-            'final_salary': final_salary,
-            'deduction_details': {
-                'manual_penalties': manual_penalty_amount,
-                'auto_late_penalty': auto_late_penalty,
-                'absence_penalty': absence_penalty if salary_type == 'monthly' else 0,
-                'total_penalties': total_penalty_amount,
-                'total_bonuses': total_bonus_amount,
-                'net_deduction': total_penalty_amount - total_bonus_amount
-            },
-            'breakdown': {
-                'base': base_salary,
-                'calculated': calculated_salary,
-                'penalties': -total_penalty_amount,
-                'bonuses': total_bonus_amount,
-                'final': final_salary
-            }
-        }
-
-    finally:
-        db.close()
+        # Faqat bu funksiya ochgan bo'lsa yopish
+        if should_close_db:
+            db.close()
 
 
 @salary_bp.route('/calculate', methods=['POST'])
@@ -550,10 +624,12 @@ def calculate_salary():
             "salary_type": "monthly",
             "worked_days": 22,
             "total_work_hours": 176,
-            "late_minutes": 600,  // 10 soat
+            "late_minutes": 600,
             "penalty_amount": 200000,
             "bonus_amount": 50000,
-            "final_salary": 2850000
+            "final_salary": 2850000,
+            "excused_days": [...],  // YANGI
+            "leave_days": {...}     // YANGI
         }
     }
     """
@@ -587,8 +663,8 @@ def calculate_salary():
             company_id=g.company_id
         ).first()
 
-        # Calculate salary
-        salary_result = calculate_employee_salary(employee, start_date, end_date, company_settings)
+        # Calculate salary - db ni parametr sifatida berish
+        salary_result = calculate_employee_salary(employee, start_date, end_date, company_settings, db)
 
         return success_response({
             'employee': {
@@ -673,9 +749,10 @@ def bulk_calculate_salary():
         total_salaries = 0
         total_penalties = 0
         total_bonuses = 0
+        total_excused_days = 0  # YANGI
 
         for employee in employees:
-            salary_result = calculate_employee_salary(employee, start_date, end_date, company_settings)
+            salary_result = calculate_employee_salary(employee, start_date, end_date, company_settings, db)
 
             results.append({
                 'employee_id': employee.id,
@@ -689,6 +766,7 @@ def bulk_calculate_salary():
             total_salaries += salary_result['final_salary']
             total_penalties += salary_result['penalty_amount']
             total_bonuses += salary_result['bonus_amount']
+            total_excused_days += len(salary_result.get('excused_days', []))  # YANGI
 
         return success_response({
             'period': {
@@ -698,386 +776,367 @@ def bulk_calculate_salary():
             'employees': results,
             'summary': {
                 'total_employees': len(results),
-                'total_salaries': total_salaries,
-                'total_penalties': total_penalties,
-                'total_bonuses': total_bonuses,
-                'net_payroll': total_salaries
+                'total_salaries': round(total_salaries, 2),
+                'total_penalties': round(total_penalties, 2),
+                'total_bonuses': round(total_bonuses, 2),
+                'total_excused_days': total_excused_days  # YANGI
             }
         })
 
     except Exception as e:
-        logger.error(f"Error bulk calculating salary: {str(e)}", exc_info=True)
+        logger.error(f"Error in bulk salary calculation: {str(e)}", exc_info=True)
         return error_response(str(e), 500)
     finally:
         db.close()
 
 
-@salary_bp.route('/monthly-report', methods=['POST'])
+@salary_bp.route('/employee/<employee_id>/history', methods=['GET'])
 @require_auth
 @load_company_context
-def monthly_salary_report():
+def get_salary_history(employee_id):
     """
-    Oylik maosh hisoboti - barcha xodimlar uchun
+    Xodimning oylik tarixi
 
-    Body: {
-        "month": 1,  // 1-12
-        "year": 2025,
-        "branch_id": "..."  // Optional
-    }
+    Query params:
+    - months: Oxirgi nechta oy (default: 6)
     """
     db = get_db()
 
     try:
-        data = request.get_json()
+        # Verify employee
+        employee = db.query(Employee).filter_by(
+            id=employee_id,
+            company_id=g.company_id
+        ).first()
 
-        month = data.get('month')
-        year = data.get('year')
+        if not employee:
+            return error_response("Employee not found", 404)
 
-        if not month or not year:
-            return error_response("month and year are required", 400)
-
-        if month < 1 or month > 12:
-            return error_response("month must be 1-12", 400)
-
-        # Calculate date range for the month
-        start_date = date(year, month, 1)
-        last_day = calendar.monthrange(year, month)[1]
-        end_date = date(year, month, last_day)
+        months = int(request.args.get('months', 6))
 
         # Get company settings
         company_settings = db.query(CompanySettings).filter_by(
             company_id=g.company_id
         ).first()
 
-        # Get employees with eager loading for branch and department
-        query = db.query(Employee).options(
-            joinedload(Employee.branch),
-            joinedload(Employee.department)
-        ).filter_by(
-            company_id=g.company_id,
-            status='active'
-        )
+        # Calculate salary for each month
+        history = []
+        today = date.today()
 
-        branch_id = data.get('branch_id')
-        if branch_id:
-            query = query.filter_by(branch_id=branch_id)
+        for i in range(months):
+            # Calculate month start and end
+            target_date = today - timedelta(days=30 * i)
+            month_start = date(target_date.year, target_date.month, 1)
+            last_day = calendar.monthrange(target_date.year, target_date.month)[1]
+            month_end = date(target_date.year, target_date.month, last_day)
 
-        employees = query.order_by(Employee.employee_no).all()
+            # Calculate salary for this month
+            salary_result = calculate_employee_salary(employee, month_start, month_end, company_settings, db)
 
-        # Calculate salary for each employee
-        results = []
-        total_salaries = 0
-        total_penalties = 0
-        total_bonuses = 0
-
-        for employee in employees:
-            salary_result = calculate_employee_salary(employee, start_date, end_date, company_settings)
-
-            results.append({
-                'employee_id': employee.id,
-                'employee_no': employee.employee_no,
-                'full_name': employee.full_name,
-                'position': employee.position,
-                'branch_name': employee.branch.name if employee.branch else None,
-                'department_name': employee.department.name if employee.department else None,
-                'base_salary': salary_result['base_salary'],
-                'salary_type': salary_result['salary_type'],
-                'worked_days': salary_result['worked_days'],
-                'expected_days': salary_result.get('expected_days', 0),
-                'absence_days': salary_result.get('absence_days', 0),
-                'daily_rate': salary_result.get('daily_rate', 0),
-                'late_minutes': salary_result['late_minutes'],
-                'late_details': salary_result.get('late_details', []),
-                'late_penalty_per_minute': salary_result.get('late_penalty_per_minute', 0),
-                'auto_late_penalty': salary_result.get('auto_late_penalty', 0),
-                'absence_penalty': salary_result.get('absence_penalty', 0),
-                'manual_penalty': salary_result.get('manual_penalty', 0),
-                'penalty_amount': salary_result['penalty_amount'],
-                'bonus_amount': salary_result['bonus_amount'],
-                'calculated_salary': salary_result.get('calculated_salary', 0),
-                'final_salary': salary_result['final_salary'],
-                'detailed_breakdown': salary_result.get('detailed_breakdown', {})
+            history.append({
+                'month': month_start.strftime('%Y-%m'),
+                'month_name': month_start.strftime('%B %Y'),
+                'salary': salary_result
             })
 
-            total_salaries += salary_result['final_salary']
-            total_penalties += salary_result['penalty_amount']
-            total_bonuses += salary_result['bonus_amount']
-
         return success_response({
-            'period': {
-                'month': month,
-                'year': year,
-                'start_date': start_date.isoformat(),
-                'end_date': end_date.isoformat()
+            'employee': {
+                'id': employee.id,
+                'employee_no': employee.employee_no,
+                'full_name': employee.full_name,
+                'position': employee.position
             },
-            'employees': results,
-            'summary': {
-                'total_employees': len(results),
-                'total_salaries': total_salaries,
-                'total_penalties': total_penalties,
-                'total_bonuses': total_bonuses,
-                'net_payroll': total_salaries
-            }
+            'history': history
         })
 
     except Exception as e:
-        logger.error(f"Error generating monthly report: {str(e)}", exc_info=True)
+        logger.error(f"Error getting salary history: {str(e)}", exc_info=True)
         return error_response(str(e), 500)
     finally:
         db.close()
 
 
-@salary_bp.route('/custom-report', methods=['POST'])
+@salary_bp.route('/penalties', methods=['GET'])
 @require_auth
 @load_company_context
-def custom_date_range_report():
+def get_penalties():
     """
-    Custom date range salary report - 4-yanvardan 10-yanvargacha kabi
-
-    Body: {
-        "start_date": "2026-01-04",
-        "end_date": "2026-01-10",
-        "branch_id": "..." // Optional
-    }
-
-    OR for monthly (backward compatibility):
-    {
-        "month": 1,
-        "year": 2026,
-        "branch_id": "..." // Optional
-    }
-    """
-    db = get_db()
-
-    try:
-        data = request.get_json()
-
-        # Check if monthly mode or custom date range
-        if 'month' in data and 'year' in data:
-            # Monthly mode - convert to date range
-            month = data.get('month')
-            year = data.get('year')
-
-            if month < 1 or month > 12:
-                return error_response("month must be 1-12", 400)
-
-            start_date = date(year, month, 1)
-            last_day = calendar.monthrange(year, month)[1]
-            end_date = date(year, month, last_day)
-
-        elif 'start_date' in data and 'end_date' in data:
-            # Custom date range mode
-            from utils.helpers import parse_date
-            start_date = parse_date(data['start_date'])
-            end_date = parse_date(data['end_date'])
-
-            if not start_date or not end_date:
-                return error_response("Invalid date format. Use YYYY-MM-DD", 400)
-
-            if start_date > end_date:
-                return error_response("start_date must be before or equal to end_date", 400)
-        else:
-            return error_response("Provide either (month, year) or (start_date, end_date)", 400)
-
-        # Get company settings
-        company_settings = db.query(CompanySettings).filter_by(
-            company_id=g.company_id
-        ).first()
-
-        # Get employees with eager loading for branch and department
-        query = db.query(Employee).options(
-            joinedload(Employee.branch),
-            joinedload(Employee.department)
-        ).filter_by(
-            company_id=g.company_id,
-            status='active'
-        )
-
-        branch_id = data.get('branch_id')
-        if branch_id:
-            query = query.filter_by(branch_id=branch_id)
-
-        employees = query.order_by(Employee.employee_no).all()
-
-        # Calculate salary for each employee
-        results = []
-        total_salaries = 0
-        total_penalties = 0
-        total_bonuses = 0
-
-        for employee in employees:
-            salary_result = calculate_employee_salary(employee, start_date, end_date, company_settings)
-
-            results.append({
-                'employee_id': employee.id,
-                'employee_no': employee.employee_no,
-                'full_name': employee.full_name,
-                'position': employee.position,
-                'branch_name': employee.branch.name if employee.branch else None,
-                'department_name': employee.department.name if employee.department else None,
-                'base_salary': salary_result['base_salary'],
-                'salary_type': salary_result['salary_type'],
-                'worked_days': salary_result['worked_days'],
-                'expected_days': salary_result.get('expected_days'),
-                'absence_days': salary_result.get('absence_days', 0),
-                'late_minutes': salary_result['late_minutes'],
-                'penalty_amount': salary_result['penalty_amount'],
-                'auto_late_penalty': salary_result.get('auto_late_penalty', 0),
-                'absence_penalty': salary_result.get('absence_penalty', 0),
-                'bonus_amount': salary_result['bonus_amount'],
-                'calculated_salary': salary_result['calculated_salary'],
-                'final_salary': salary_result['final_salary']
-            })
-
-            total_salaries += salary_result['final_salary']
-            total_penalties += salary_result['penalty_amount']
-            total_bonuses += salary_result['bonus_amount']
-
-        return success_response({
-            'period': {
-                'start_date': start_date.isoformat(),
-                'end_date': end_date.isoformat(),
-                'total_days': (end_date - start_date).days + 1
-            },
-            'employees': results,
-            'summary': {
-                'total_employees': len(results),
-                'total_salaries': total_salaries,
-                'total_penalties': total_penalties,
-                'total_bonuses': total_bonuses,
-                'net_payroll': total_salaries
-            }
-        })
-
-    except Exception as e:
-        logger.error(f"Error generating custom report: {str(e)}", exc_info=True)
-        return error_response(str(e), 500)
-    finally:
-        db.close()
-
-
-@salary_bp.route('/late-ranking', methods=['GET'])
-@require_auth
-@load_company_context
-def get_late_ranking():
-    """
-    Eng ko'p kech qolganlar reytingi
+    Jarimalar ro'yxati
 
     Query params:
     - start_date, end_date
-    - limit (default: 20)
-    - branch_id (optional)
-    - order: 'most' (eng ko'p) yoki 'least' (eng kam) - default: 'most'
-
-    Response: [
-        {
-            "rank": 1,
-            "employee_no": "001",
-            "full_name": "Ali Valiyev",
-            "total_late_minutes": 600,  // 10 soat
-            "total_late_hours": 10.0,
-            "late_days": 15,
-            "avg_late_minutes": 40,
-            "penalty_amount": 200000
-        }
-    ]
+    - employee_id (optional)
+    - penalty_type (optional): 'late', 'absence', 'manual'
+    - page, per_page
     """
     db = get_db()
 
     try:
-        limit = int(request.args.get('limit', 20))
-        order = request.args.get('order', 'most')  # 'most' or 'least'
+        # Parse dates
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+
+        if not start_date_str or not end_date_str:
+            return error_response("start_date and end_date are required", 400)
+
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
 
         # Build query
-        query = db.query(
-            Employee.id,
-            Employee.employee_no,
-            Employee.full_name,
-            Employee.branch_id,
-            Employee.position,
-            func.sum(AttendanceLog.late_minutes).label('total_late_minutes'),
-            func.count(AttendanceLog.id).filter(AttendanceLog.late_minutes > 0).label('late_days')
-        ).join(
-            AttendanceLog, Employee.id == AttendanceLog.employee_id
-        ).filter(
-            Employee.company_id == g.company_id,
-            Employee.status == 'active'
+        query = db.query(Penalty).filter(
+            Penalty.company_id == g.company_id,
+            Penalty.date >= start_date,
+            Penalty.date <= end_date
         )
 
-        # Date filters
-        start_date = request.args.get('start_date')
-        if start_date:
-            query = query.filter(AttendanceLog.date >= start_date)
+        # Filters
+        employee_id = request.args.get('employee_id')
+        if employee_id:
+            query = query.filter_by(employee_id=employee_id)
 
-        end_date = request.args.get('end_date')
-        if end_date:
-            query = query.filter(AttendanceLog.date <= end_date)
+        penalty_type = request.args.get('penalty_type')
+        if penalty_type:
+            query = query.filter_by(penalty_type=penalty_type)
 
-        # Branch filter
-        branch_id = request.args.get('branch_id')
-        if branch_id:
-            query = query.filter(Employee.branch_id == branch_id)
+        # Pagination
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 50))
 
-        # Group by employee
-        query = query.group_by(
-            Employee.id,
-            Employee.employee_no,
-            Employee.full_name,
-            Employee.branch_id,
-            Employee.position
-        )
-
-        # Order
-        if order == 'least':
-            query = query.order_by(func.sum(AttendanceLog.late_minutes).asc())
-        else:
-            query = query.order_by(func.sum(AttendanceLog.late_minutes).desc())
-
-        query = query.limit(limit)
-
-        results = query.all()
-
-        # Get penalties for these employees
-        ranking = []
-        for idx, result in enumerate(results, 1):
-            # Get penalties
-            penalty_query = db.query(func.sum(Penalty.amount)).filter(
-                Penalty.employee_id == result.id,
-                Penalty.is_waived == False,
-                Penalty.is_excused == False
-            )
-
-            if start_date:
-                penalty_query = penalty_query.filter(Penalty.date >= start_date)
-            if end_date:
-                penalty_query = penalty_query.filter(Penalty.date <= end_date)
-
-            penalty_amount = penalty_query.scalar() or 0
-
-            total_late_minutes = result.total_late_minutes or 0
-
-            ranking.append({
-                'rank': idx,
-                'employee_id': result.id,
-                'employee_no': result.employee_no,
-                'full_name': result.full_name,
-                'position': result.position,
-                'branch_id': result.branch_id,
-                'total_late_minutes': int(total_late_minutes),
-                'total_late_hours': round(total_late_minutes / 60, 2),
-                'late_days': result.late_days,
-                'avg_late_minutes': round(total_late_minutes / result.late_days, 2) if result.late_days > 0 else 0,
-                'penalty_amount': float(penalty_amount)
-            })
+        total = query.count()
+        penalties = query.order_by(Penalty.date.desc()).offset((page - 1) * per_page).limit(per_page).all()
 
         return success_response({
-            'ranking': ranking,
-            'order': order,
-            'total_count': len(ranking)
+            'penalties': [p.to_dict() for p in penalties],
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': (total + per_page - 1) // per_page
+            }
         })
 
     except Exception as e:
-        logger.error(f"Error getting late ranking: {str(e)}", exc_info=True)
+        logger.error(f"Error getting penalties: {str(e)}", exc_info=True)
+        return error_response(str(e), 500)
+    finally:
+        db.close()
+
+
+@salary_bp.route('/penalties', methods=['POST'])
+@require_auth
+@load_company_context
+def create_penalty():
+    """
+    Yangi jarima yaratish (manual penalty)
+
+    Body: {
+        "employee_id": "...",
+        "amount": 50000,
+        "reason": "...",
+        "date": "2025-01-15"
+    }
+    """
+    db = get_db()
+
+    try:
+        data = request.get_json()
+
+        employee_id = data.get('employee_id')
+        amount = data.get('amount')
+        reason = data.get('reason', '')
+        date_str = data.get('date')
+
+        if not employee_id or not amount or not date_str:
+            return error_response("employee_id, amount, and date are required", 400)
+
+        # Verify employee
+        employee = db.query(Employee).filter_by(
+            id=employee_id,
+            company_id=g.company_id
+        ).first()
+
+        if not employee:
+            return error_response("Employee not found", 404)
+
+        # Create penalty
+        penalty = Penalty(
+            company_id=g.company_id,
+            employee_id=employee_id,
+            penalty_type='manual',
+            amount=float(amount),
+            reason=reason,
+            date=datetime.strptime(date_str, '%Y-%m-%d').date()
+        )
+
+        db.add(penalty)
+        db.commit()
+
+        return success_response({
+            'penalty': penalty.to_dict()
+        }, 201)
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating penalty: {str(e)}", exc_info=True)
+        return error_response(str(e), 500)
+    finally:
+        db.close()
+
+
+@salary_bp.route('/penalties/<penalty_id>/waive', methods=['POST'])
+@require_auth
+@load_company_context
+def waive_penalty(penalty_id):
+    """
+    Jarimani bekor qilish (waive)
+
+    Body: {
+        "reason": "Sabab..."
+    }
+    """
+    db = get_db()
+
+    try:
+        penalty = db.query(Penalty).filter_by(
+            id=penalty_id,
+            company_id=g.company_id
+        ).first()
+
+        if not penalty:
+            return error_response("Penalty not found", 404)
+
+        data = request.get_json() or {}
+
+        penalty.is_waived = True
+        penalty.waive_reason = data.get('reason', '')
+        penalty.waived_by = g.admin_id if hasattr(g, 'admin_id') else None
+        penalty.waived_at = datetime.now()
+
+        db.commit()
+
+        return success_response({
+            'penalty': penalty.to_dict()
+        })
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error waiving penalty: {str(e)}", exc_info=True)
+        return error_response(str(e), 500)
+    finally:
+        db.close()
+
+
+@salary_bp.route('/bonuses', methods=['GET'])
+@require_auth
+@load_company_context
+def get_bonuses():
+    """
+    Bonuslar ro'yxati
+    """
+    db = get_db()
+
+    try:
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+
+        if not start_date_str or not end_date_str:
+            return error_response("start_date and end_date are required", 400)
+
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        query = db.query(Bonus).filter(
+            Bonus.company_id == g.company_id,
+            Bonus.date >= start_date,
+            Bonus.date <= end_date
+        )
+
+        employee_id = request.args.get('employee_id')
+        if employee_id:
+            query = query.filter_by(employee_id=employee_id)
+
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 50))
+
+        total = query.count()
+        bonuses = query.order_by(Bonus.date.desc()).offset((page - 1) * per_page).limit(per_page).all()
+
+        return success_response({
+            'bonuses': [b.to_dict() for b in bonuses],
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': (total + per_page - 1) // per_page
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting bonuses: {str(e)}", exc_info=True)
+        return error_response(str(e), 500)
+    finally:
+        db.close()
+
+
+@salary_bp.route('/bonuses', methods=['POST'])
+@require_auth
+@load_company_context
+def create_bonus():
+    """
+    Yangi bonus yaratish
+
+    Body: {
+        "employee_id": "...",
+        "amount": 100000,
+        "reason": "...",
+        "date": "2025-01-15",
+        "bonus_type": "manual"  // 'perfect_attendance', 'early_arrival', 'overtime', 'manual'
+    }
+    """
+    db = get_db()
+
+    try:
+        data = request.get_json()
+
+        employee_id = data.get('employee_id')
+        amount = data.get('amount')
+        reason = data.get('reason', '')
+        date_str = data.get('date')
+        bonus_type = data.get('bonus_type', 'manual')
+
+        if not employee_id or not amount or not date_str:
+            return error_response("employee_id, amount, and date are required", 400)
+
+        # Verify employee
+        employee = db.query(Employee).filter_by(
+            id=employee_id,
+            company_id=g.company_id
+        ).first()
+
+        if not employee:
+            return error_response("Employee not found", 404)
+
+        # Create bonus
+        bonus = Bonus(
+            company_id=g.company_id,
+            employee_id=employee_id,
+            bonus_type=bonus_type,
+            amount=float(amount),
+            reason=reason,
+            date=datetime.strptime(date_str, '%Y-%m-%d').date(),
+            given_by=g.admin_id if hasattr(g, 'admin_id') else None
+        )
+
+        db.add(bonus)
+        db.commit()
+
+        return success_response({
+            'bonus': bonus.to_dict()
+        }, 201)
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating bonus: {str(e)}", exc_info=True)
         return error_response(str(e), 500)
     finally:
         db.close()
@@ -1088,26 +1147,12 @@ def get_late_ranking():
 @load_company_context
 def get_attendance_ranking():
     """
-    Davomat bo'yicha eng yaxshi xodimlar reytingi
+    Davomat bo'yicha reyting (eng yaxshi xodimlar)
 
     Query params:
     - start_date, end_date
     - limit (default: 20)
     - branch_id (optional)
-
-    Response: [
-        {
-            "rank": 1,
-            "employee_no": "001",
-            "full_name": "Ali Valiyev",
-            "total_days": 22,
-            "on_time_days": 20,
-            "late_days": 2,
-            "total_late_minutes": 30,
-            "attendance_rate": 95.45,
-            "bonus_amount": 200000
-        }
-    ]
     """
     db = get_db()
 
@@ -1215,6 +1260,7 @@ def get_payroll_summary():
         "total_penalties": 5000000,
         "total_bonuses": 3000000,
         "total_payroll": 148000000,
+        "total_excused_days": 25,  // YANGI
         "by_branch": [...],
         "by_department": [...]
     }
@@ -1254,16 +1300,20 @@ def get_payroll_summary():
         total_payroll = 0
         total_penalties = 0
         total_bonuses = 0
+        total_excused_days = 0  # YANGI
+        total_penalty_saved = 0  # YANGI
 
         by_branch = {}
         by_department = {}
 
         for employee in employees:
-            salary_result = calculate_employee_salary(employee, start_date, end_date, company_settings)
+            salary_result = calculate_employee_salary(employee, start_date, end_date, company_settings, db)
 
             total_payroll += salary_result['final_salary']
             total_penalties += salary_result['penalty_amount']
             total_bonuses += salary_result['bonus_amount']
+            total_excused_days += len(salary_result.get('excused_days', []))  # YANGI
+            total_penalty_saved += salary_result.get('excused_summary', {}).get('total_penalty_saved', 0)  # YANGI
 
             # Group by branch
             branch_key = employee.branch.name if employee.branch else 'No Branch'
@@ -1272,12 +1322,14 @@ def get_payroll_summary():
                     'employee_count': 0,
                     'total_salary': 0,
                     'total_penalties': 0,
-                    'total_bonuses': 0
+                    'total_bonuses': 0,
+                    'total_excused_days': 0  # YANGI
                 }
             by_branch[branch_key]['employee_count'] += 1
             by_branch[branch_key]['total_salary'] += salary_result['final_salary']
             by_branch[branch_key]['total_penalties'] += salary_result['penalty_amount']
             by_branch[branch_key]['total_bonuses'] += salary_result['bonus_amount']
+            by_branch[branch_key]['total_excused_days'] += len(salary_result.get('excused_days', []))  # YANGI
 
             # Group by department
             dept_key = employee.department.name if employee.department else 'No Department'
@@ -1286,12 +1338,14 @@ def get_payroll_summary():
                     'employee_count': 0,
                     'total_salary': 0,
                     'total_penalties': 0,
-                    'total_bonuses': 0
+                    'total_bonuses': 0,
+                    'total_excused_days': 0  # YANGI
                 }
             by_department[dept_key]['employee_count'] += 1
             by_department[dept_key]['total_salary'] += salary_result['final_salary']
             by_department[dept_key]['total_penalties'] += salary_result['penalty_amount']
             by_department[dept_key]['total_bonuses'] += salary_result['bonus_amount']
+            by_department[dept_key]['total_excused_days'] += len(salary_result.get('excused_days', []))  # YANGI
 
         # Convert to lists
         by_branch_list = [{'name': k, **v} for k, v in by_branch.items()]
@@ -1307,7 +1361,10 @@ def get_payroll_summary():
                 'total_base_salary': total_base_salary,
                 'total_penalties': total_penalties,
                 'total_bonuses': total_bonuses,
-                'total_payroll': total_payroll
+                'total_payroll': total_payroll,
+                # YANGI
+                'total_excused_days': total_excused_days,
+                'total_penalty_saved': round(total_penalty_saved, 2)
             },
             'by_branch': by_branch_list,
             'by_department': by_department_list

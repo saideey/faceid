@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, Column, String, Integer, Float, Boolean, Date, DateTime, Time, Text, ForeignKey, \
-    Index
+    Index, text, inspect
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, scoped_session
@@ -45,6 +45,9 @@ penalty_type_enum = ENUM('late', 'early_leave', 'absence', 'manual', name='penal
 bonus_type_enum = ENUM('perfect_attendance', 'early_arrival', 'overtime', 'manual', name='bonustypeenum',
                        create_type=False)
 salary_type_enum = ENUM('monthly', 'daily', name='salarytypeenum', create_type=False)
+
+# YANGI - Dam olish/Kasal turi
+leave_type_enum = ENUM('rest', 'sick', name='leavetypeenum', create_type=False)
 
 
 # ========================================
@@ -92,6 +95,7 @@ class Company(Base):
     attendance_logs = relationship("AttendanceLog", back_populates="company")
     penalties = relationship("Penalty", back_populates="company")
     bonuses = relationship("Bonus", back_populates="company")
+    employee_leaves = relationship("EmployeeLeave", back_populates="company")  # YANGI
 
     def to_dict(self):
         return {
@@ -311,6 +315,7 @@ class Employee(Base):
     penalties = relationship("Penalty", back_populates="employee", cascade="all, delete-orphan")
     bonuses = relationship("Bonus", back_populates="employee", cascade="all, delete-orphan")
     schedules = relationship("EmployeeSchedule", back_populates="employee", cascade="all, delete-orphan")
+    leaves = relationship("EmployeeLeave", back_populates="employee", cascade="all, delete-orphan")  # YANGI
 
     def to_dict(self):
         return {
@@ -377,6 +382,63 @@ class EmployeeSchedule(Base):
             'is_day_off': self.is_day_off,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+# ========================================
+# YANGI - EMPLOYEE LEAVE MODEL
+# Dam olish va Kasal kunlar
+# ========================================
+
+class EmployeeLeave(Base):
+    """
+    Xodimning dam olish va kasal kunlari
+    - rest: Dam olish (oyiga 2 ta limit)
+    - sick: Kasal (oyiga 20 ta limit)
+    Bu kunlar oylik hisoblashda ishga kelgan deb hisoblanadi
+    """
+    __tablename__ = 'employee_leaves'
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    company_id = Column(String(36), ForeignKey('companies.id'), nullable=False)
+    employee_id = Column(String(36), ForeignKey('employees.id'), nullable=False)
+
+    # Sana va turi
+    date = Column(Date, nullable=False)
+    leave_type = Column(leave_type_enum, nullable=False)  # 'rest' yoki 'sick'
+
+    # Izoh (ixtiyoriy)
+    reason = Column(Text)
+
+    # Kim belgiladi
+    created_by = Column(String(36))  # Admin user ID
+    created_at = Column(DateTime(timezone=True), default=get_tashkent_time)
+
+    # Unique constraint: bir xodim uchun bir sana faqat bir marta
+    __table_args__ = (
+        Index('idx_leave_employee_date', 'employee_id', 'date', unique=True),
+        Index('idx_leave_company_date', 'company_id', 'date'),
+        Index('idx_leave_type', 'leave_type'),
+        Index('idx_leave_employee_month', 'employee_id', 'date'),  # Oylik hisobot uchun
+    )
+
+    # Relationships
+    company = relationship("Company", back_populates="employee_leaves")
+    employee = relationship("Employee", back_populates="leaves")
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'company_id': self.company_id,
+            'employee_id': self.employee_id,
+            'employee_no': self.employee.employee_no if self.employee else None,
+            'employee_name': self.employee.full_name if self.employee else None,
+            'date': self.date.isoformat() if self.date else None,
+            'leave_type': self.leave_type,
+            'type': self.leave_type,  # Frontend uchun alias
+            'reason': self.reason,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
 
@@ -558,10 +620,12 @@ class Bonus(Base):
         }
 
 
+# ========================================
+# DATABASE INITIALIZATION & MIGRATION
+# ========================================
+
 def create_enum_types():
     """Create PostgreSQL enum types if they don't exist"""
-    from sqlalchemy import text
-
     with engine.connect() as conn:
         # Create statusenum
         conn.execute(text("""
@@ -585,7 +649,7 @@ def create_enum_types():
             $$;
         """))
 
-        # Create bonustypeenum - YANGI
+        # Create bonustypeenum
         conn.execute(text("""
             DO $$ 
             BEGIN
@@ -596,7 +660,7 @@ def create_enum_types():
             $$;
         """))
 
-        # Create salarytypeenum - YANGI
+        # Create salarytypeenum
         conn.execute(text("""
             DO $$ 
             BEGIN
@@ -607,19 +671,136 @@ def create_enum_types():
             $$;
         """))
 
+        # YANGI - Create leavetypeenum
+        conn.execute(text("""
+            DO $$ 
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'leavetypeenum') THEN
+                    CREATE TYPE leavetypeenum AS ENUM ('rest', 'sick');
+                END IF;
+            END
+            $$;
+        """))
+
         conn.commit()
 
-    print("✅ Enum types created successfully!")
+    print("✅ Enum types created/verified successfully!")
+
+
+def table_exists(table_name):
+    """Check if a table exists in database"""
+    inspector = inspect(engine)
+    return table_name in inspector.get_table_names()
+
+
+def run_migrations():
+    """
+    Run safe migrations - only adds new tables/columns without deleting existing data
+    Bu funksiya Docker restart qilganda xavfsiz ishlaydi
+    """
+    print("🔄 Running database migrations...")
+
+    with engine.connect() as conn:
+        # 1. employee_leaves jadvalini yaratish (agar mavjud bo'lmasa)
+        if not table_exists('employee_leaves'):
+            print("  📦 Creating 'employee_leaves' table...")
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS employee_leaves (
+                    id VARCHAR(36) PRIMARY KEY,
+                    company_id VARCHAR(36) NOT NULL REFERENCES companies(id),
+                    employee_id VARCHAR(36) NOT NULL REFERENCES employees(id),
+                    date DATE NOT NULL,
+                    leave_type leavetypeenum NOT NULL,
+                    reason TEXT,
+                    created_by VARCHAR(36),
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+            """))
+
+            # Indexlar yaratish
+            conn.execute(text("""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_leave_employee_date 
+                ON employee_leaves(employee_id, date);
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_leave_company_date 
+                ON employee_leaves(company_id, date);
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_leave_type 
+                ON employee_leaves(leave_type);
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_leave_employee_month 
+                ON employee_leaves(employee_id, date);
+            """))
+
+            conn.commit()
+            print("  ✅ 'employee_leaves' table created successfully!")
+        else:
+            print("  ✅ 'employee_leaves' table already exists, skipping...")
+
+        # Kelajakda boshqa migrationlar uchun joy
+        # 2. Yangi ustunlar qo'shish (misol)
+        # try:
+        #     conn.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS new_column VARCHAR(255);"))
+        #     conn.commit()
+        # except Exception as e:
+        #     print(f"  ⚠️ Column migration skipped: {e}")
+
+    print("✅ Database migrations completed!")
 
 
 def init_db():
-    """Initialize database - create enum types and all tables"""
-    print("Initializing database...")
+    """
+    Initialize database - create enum types and all tables
+    Docker uchun xavfsiz - mavjud ma'lumotlarni o'chirmaydi
+    """
+    print("=" * 50)
+    print("🚀 Initializing database...")
+    print("=" * 50)
 
-    # Create enum types first
-    create_enum_types()
+    try:
+        # 1. Enum type larni yaratish (IF NOT EXISTS bilan)
+        create_enum_types()
 
-    # Create all tables
-    Base.metadata.create_all(bind=engine)
+        # 2. Barcha jadvallarni yaratish (mavjudlarini o'zgartirmaydi)
+        # SQLAlchemy create_all() faqat yangi jadvallar yaratadi
+        Base.metadata.create_all(bind=engine)
+        print("✅ All tables created/verified successfully!")
 
-    print("✅ Database initialized successfully!")
+        # 3. Qo'shimcha migrationlarni ishga tushirish
+        run_migrations()
+
+        print("=" * 50)
+        print("✅ Database initialization completed successfully!")
+        print("=" * 50)
+
+    except Exception as e:
+        print(f"❌ Database initialization error: {e}")
+        raise e
+
+
+def check_db_connection():
+    """Check database connection"""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print("✅ Database connection successful!")
+        return True
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+        return False
+
+
+# Docker uchun - agar bu fayl to'g'ridan-to'g'ri ishga tushirilsa
+if __name__ == "__main__":
+    print("\n🐳 Running database initialization for Docker...\n")
+
+    # Aloqani tekshirish
+    if check_db_connection():
+        # Ma'lumotlar bazasini ishga tushirish
+        init_db()
+    else:
+        print("❌ Cannot initialize database - connection failed")
+        exit(1)

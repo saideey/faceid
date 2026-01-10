@@ -93,70 +93,66 @@
 </div>
 
 <!-- Summary Cards -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+<div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
     <div class="stat-card p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
         <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-medium opacity-90">Jami xodimlar</h3>
             <i class="fas fa-users text-2xl opacity-50"></i>
         </div>
         <p class="text-3xl font-bold" id="totalEmployeesCount">0</p>
-        <p class="text-xs opacity-75 mt-1">Faol xodimlar</p>
     </div>
 
     <div class="stat-card p-6 bg-gradient-to-br from-green-500 to-green-600 text-white">
         <div class="flex items-center justify-between mb-2">
-            <h3 class="text-sm font-medium opacity-90">Jami oyliklar</h3>
+            <h3 class="text-sm font-medium opacity-90">Jami oylik</h3>
             <i class="fas fa-money-bill-wave text-2xl opacity-50"></i>
         </div>
-        <p class="text-3xl font-bold" id="totalSalaries">0 so'm</p>
-        <p class="text-xs opacity-75 mt-1">To'lanandigan summa</p>
+        <p class="text-3xl font-bold" id="totalSalaries">0</p>
     </div>
 
     <div class="stat-card p-6 bg-gradient-to-br from-red-500 to-red-600 text-white">
         <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-medium opacity-90">Jami jarimalar</h3>
-            <i class="fas fa-exclamation-triangle text-2xl opacity-50"></i>
+            <i class="fas fa-minus-circle text-2xl opacity-50"></i>
         </div>
-        <p class="text-3xl font-bold" id="totalPenalties">0 so'm</p>
-        <p class="text-xs opacity-75 mt-1">Ushlab qolingan</p>
+        <p class="text-3xl font-bold" id="totalPenalties">0</p>
     </div>
 
     <div class="stat-card p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-white">
         <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-medium opacity-90">Jami bonuslar</h3>
-            <i class="fas fa-gift text-2xl opacity-50"></i>
+            <i class="fas fa-plus-circle text-2xl opacity-50"></i>
         </div>
-        <p class="text-3xl font-bold" id="totalBonuses">0 so'm</p>
-        <p class="text-xs opacity-75 mt-1">Qo'shimcha to'lov</p>
+        <p class="text-3xl font-bold" id="totalBonuses">0</p>
+    </div>
+
+    <div class="stat-card p-6 bg-gradient-to-br from-teal-500 to-teal-600 text-white">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium opacity-90">Jarimadan ozod</h3>
+            <i class="fas fa-umbrella-beach text-2xl opacity-50"></i>
+        </div>
+        <p class="text-3xl font-bold" id="totalExcusedDays">0 kun</p>
     </div>
 </div>
 
-<!-- Main Content Tabs -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-200">
-    <!-- Tabs -->
-    <div class="border-b border-gray-200">
-        <div class="flex space-x-1 p-2">
-            <button onclick="switchTab('salaries')" id="salariesTab" class="tab-button active px-6 py-3 rounded-lg font-medium transition-colors">
-                <i class="fas fa-list mr-2"></i>
-                Oyliklar ro'yxati
-            </button>
-            <button onclick="switchTab('rankings')" id="rankingsTab" class="tab-button px-6 py-3 rounded-lg font-medium transition-colors">
-                <i class="fas fa-trophy mr-2"></i>
-                Reytinglar
-            </button>
-            <button onclick="switchTab('analytics')" id="analyticsTab" class="tab-button px-6 py-3 rounded-lg font-medium transition-colors">
-                <i class="fas fa-chart-pie mr-2"></i>
-                Tafsılotlar
-            </button>
-        </div>
+<!-- Tabs -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <!-- Tab Buttons -->
+    <div class="flex border-b border-gray-200">
+        <button onclick="switchTab('salaries')" id="salariesTab" class="tab-button active px-6 py-4 font-semibold">
+            <i class="fas fa-table mr-2"></i>
+            Oylik jadvali
+        </button>
+        <button onclick="switchTab('rankings')" id="rankingsTab" class="tab-button px-6 py-4 font-semibold">
+            <i class="fas fa-trophy mr-2"></i>
+            Reytinglar
+        </button>
     </div>
 
-    <!-- Tab Contents -->
-
-    <!-- Salaries List Tab -->
+    <!-- Salaries Tab -->
     <div id="salariesContent" class="tab-content p-6">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold text-gray-800">Oyliklar ro'yxati</h3>
+            <h3 class="text-lg font-semibold">Xodimlar oyligi</h3>
             <button onclick="exportSalaryReport()" class="btn-secondary">
                 <i class="fas fa-file-excel mr-2"></i>
                 Excel yuklab olish
@@ -169,10 +165,10 @@
                     <tr>
                         <th class="px-6 py-3">XODIM</th>
                         <th class="px-6 py-3">FILIAL</th>
-                        <th class="px-6 py-3">BO'LIM</th>
                         <th class="px-6 py-3 text-right">ASOSIY OYLIK</th>
                         <th class="px-6 py-3 text-right">ISHLANGAN</th>
-                        <th class="px-6 py-3 text-right">KECH QOLISH</th>
+                        <th class="px-6 py-3 text-right">DAM/KASAL</th>
+                        <th class="px-6 py-3 text-right">KECHIKISH</th>
                         <th class="px-6 py-3 text-right">JARIMALAR</th>
                         <th class="px-6 py-3 text-right">BONUSLAR</th>
                         <th class="px-6 py-3 text-right">YAKUNIY</th>
@@ -216,109 +212,64 @@
             </div>
         </div>
     </div>
-
-    <!-- Analytics Tab -->
-    <div id="analyticsContent" class="tab-content hidden p-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Branch Breakdown -->
-            <div class="border border-gray-200 rounded-lg p-4">
-                <h4 class="text-lg font-semibold text-gray-800 mb-4">Filialllar bo'yicha</h4>
-                <canvas id="branchBreakdownChart"></canvas>
-            </div>
-
-            <!-- Department Breakdown -->
-            <div class="border border-gray-200 rounded-lg p-4">
-                <h4 class="text-lg font-semibold text-gray-800 mb-4">Bo'limlar bo'yicha</h4>
-                <canvas id="departmentBreakdownChart"></canvas>
-            </div>
-        </div>
-    </div>
 </div>
 
-<!-- Detailed Salary Breakdown Modal -->
-<div id="salaryDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+<!-- Salary Detail Modal -->
+<div id="salaryDetailModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
         <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-            <h3 class="text-xl font-bold text-gray-800">
-                <i class="fas fa-calculator mr-2"></i>
-                Batafsil hisob-kitob
-            </h3>
-            <button onclick="closeSalaryDetail()" class="text-gray-500 hover:text-gray-700">
+            <h3 class="text-xl font-bold text-gray-800">Oylik tafsilotlari</h3>
+            <button onclick="closeSalaryDetail()" class="text-gray-400 hover:text-gray-600">
                 <i class="fas fa-times text-2xl"></i>
             </button>
         </div>
-
         <div id="salaryDetailContent" class="p-6">
             <!-- Content will be loaded here -->
         </div>
     </div>
 </div>
 
-<style>
-.tab-button {
-    color: #64748b;
-}
-
-.tab-button.active {
-    background: #2563eb;
-    color: white;
-}
-
-.tab-button:not(.active):hover {
-    background: #f1f5f9;
-}
-
-.mode-btn {
-    transition: all 0.3s;
-    color: #6b7280;
-    border-bottom: 2px solid transparent;
-}
-
-.mode-btn.active {
-    color: #3b82f6;
-    border-bottom-color: #3b82f6;
-}
-
-.mode-btn:not(.active):hover {
-    color: #1f2937;
-}
-</style>
-
-{% endblock %}
-
-{% block extra_js %}
 <script>
-let salaryData = [];
-let branchBreakdownChart = null;
-let departmentBreakdownChart = null;
 let currentMode = 'monthly';
+let salaryData = [];
+let currentPeriod = { startDate: null, endDate: null };
 
-// Initialize
+// Format currency
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('uz-UZ').format(Math.round(amount)) + ' UZS';
+}
+
+// Initialize year selector
 function initializeYearSelector() {
     const yearSelect = document.getElementById('yearSelect');
     const currentYear = new Date().getFullYear();
 
-    for (let i = currentYear; i >= currentYear - 5; i--) {
+    for (let year = currentYear - 2; year <= currentYear + 1; year++) {
         const option = document.createElement('option');
-        option.value = i;
-        option.textContent = i;
+        option.value = year;
+        option.textContent = year;
+        if (year === currentYear) option.selected = true;
         yearSelect.appendChild(option);
     }
 }
 
+// Initialize month selector
 function initializeMonthSelector() {
     const currentMonth = new Date().getMonth() + 1;
     document.getElementById('monthSelect').value = currentMonth;
 }
 
+// Load branches
 async function loadBranches() {
     try {
         const branches = await API.branches.getAll({ per_page: 100 });
-
         const monthlyFilter = document.getElementById('branchFilter');
         const customFilter = document.getElementById('branchFilterCustom');
 
-        branches.forEach(branch => {
+        // Check if branches is array
+        const branchList = Array.isArray(branches) ? branches : [];
+
+        branchList.forEach(branch => {
             const option1 = document.createElement('option');
             option1.value = branch.id;
             option1.textContent = branch.name;
@@ -363,6 +314,17 @@ function setCalculationMode(mode) {
     }
 }
 
+// Helper: Get date range from month/year
+function getDateRangeFromMonth(month, year) {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0); // Last day of month
+
+    return {
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate.toISOString().split('T')[0]
+    };
+}
+
 // Unified calculate function
 async function calculateSalary() {
     showLoading();
@@ -370,47 +332,75 @@ async function calculateSalary() {
     try {
         let data = {};
         let branchId;
+        let startDate, endDate;
 
         if (currentMode === 'monthly') {
             const month = parseInt(document.getElementById('monthSelect').value);
             const year = parseInt(document.getElementById('yearSelect').value);
             branchId = document.getElementById('branchFilter').value;
 
-            data = { month, year };
+            // Convert month/year to start_date and end_date
+            const dateRange = getDateRangeFromMonth(month, year);
+            startDate = dateRange.start_date;
+            endDate = dateRange.end_date;
+
+            data = {
+                start_date: startDate,
+                end_date: endDate
+            };
         } else {
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
+            startDate = document.getElementById('startDate').value;
+            endDate = document.getElementById('endDate').value;
             branchId = document.getElementById('branchFilterCustom').value;
 
             if (!startDate || !endDate) {
                 showNotification('Sanalarni tanlang', 'warning');
+                hideLoading();
                 return;
             }
 
             if (new Date(startDate) > new Date(endDate)) {
                 showNotification('Boshlanish sanasi tugash sanasidan katta bo\'lmasligi kerak', 'error');
+                hideLoading();
                 return;
             }
 
             data = { start_date: startDate, end_date: endDate };
         }
 
+        // Save current period for later use
+        currentPeriod = { startDate, endDate };
+
         if (branchId) data.branch_id = branchId;
 
-        const response = await API.salary.customReport(data);
-        salaryData = response.employees || [];
+        console.log('📤 Sending salary request:', data);
 
-        updateSummaryCards(response.summary);
+        const response = await API.salary.bulkCalculate(data);
+
+        // Handle response - it might be employees array or object with employees
+        salaryData = response.employees || response || [];
+
+        const summary = response.summary || {
+            total_employees: salaryData.length,
+            total_salaries: salaryData.reduce((sum, e) => sum + (e.salary?.final_salary || 0), 0),
+            total_penalties: salaryData.reduce((sum, e) => sum + (e.salary?.penalty_amount || 0), 0),
+            total_bonuses: salaryData.reduce((sum, e) => sum + (e.salary?.bonus_amount || 0), 0),
+            total_excused_days: salaryData.reduce((sum, e) => sum + (e.salary?.excused_days?.length || 0), 0)
+        };
+
+        updateSummaryCards(summary);
         renderSalariesTable();
 
         if (currentMode === 'monthly') {
-            await loadRankings(data.month, data.year);
+            const month = parseInt(document.getElementById('monthSelect').value);
+            const year = parseInt(document.getElementById('yearSelect').value);
+            await loadRankings(month, year);
         }
 
         showNotification('Hisoblash muvaffaqiyatli bajarildi', 'success');
     } catch (error) {
         console.error('Error calculating salary:', error);
-        showNotification(error.response?.data?.message || 'Hisoblashda xatolik', 'error');
+        showNotification(error.message || error.response?.data?.message || 'Hisoblashda xatolik', 'error');
     } finally {
         hideLoading();
     }
@@ -421,6 +411,7 @@ function updateSummaryCards(summary) {
     document.getElementById('totalSalaries').textContent = formatCurrency(summary.total_salaries || 0);
     document.getElementById('totalPenalties').textContent = formatCurrency(summary.total_penalties || 0);
     document.getElementById('totalBonuses').textContent = formatCurrency(summary.total_bonuses || 0);
+    document.getElementById('totalExcusedDays').textContent = (summary.total_excused_days || 0) + ' kun';
 }
 
 function renderSalariesTable() {
@@ -431,56 +422,69 @@ function renderSalariesTable() {
         return;
     }
 
-    tbody.innerHTML = salaryData.map(emp => `
+    tbody.innerHTML = salaryData.map(emp => {
+        // Handle both direct salary data and nested salary object
+        const salary = emp.salary || emp;
+        const leaveDays = salary.leave_days || {};
+        const excusedDays = salary.excused_days || [];
+        const leaveTotal = leaveDays.total_count || excusedDays.length || 0;
+
+        return `
         <tr class="hover:bg-gray-50">
             <td class="px-6 py-4">
                 <div class="flex items-center">
                     <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mr-3">
-                        <span class="text-white font-bold text-sm">${emp.full_name.charAt(0)}</span>
+                        <span class="text-white font-bold text-sm">${emp.full_name?.charAt(0) || '?'}</span>
                     </div>
                     <div>
-                        <p class="font-medium text-gray-800">${emp.full_name}</p>
-                        <p class="text-xs text-gray-500">${emp.employee_no}</p>
+                        <p class="font-medium text-gray-800">${emp.full_name || 'N/A'}</p>
+                        <p class="text-xs text-gray-500">${emp.employee_no || ''}</p>
                     </div>
                 </div>
             </td>
             <td class="px-6 py-4">
                 <span class="badge badge-info">${emp.branch_name || 'N/A'}</span>
             </td>
-            <td class="px-6 py-4">
-                <span class="badge badge-secondary">${emp.department_name || 'N/A'}</span>
+            <td class="px-6 py-4 text-right font-medium">
+                ${formatCurrency(salary.base_salary || 0)}
             </td>
             <td class="px-6 py-4 text-right">
-                <div>
-                    <p class="font-medium text-gray-800">${formatCurrency(emp.base_salary)}</p>
-                    <p class="text-xs text-gray-500">${emp.salary_type === 'monthly' ? 'Oylik' : 'Kunlik'}</p>
-                </div>
+                <span class="text-green-600 font-semibold">${salary.worked_days || 0}</span>
+                <span class="text-gray-400">/ ${salary.expected_days || 0}</span>
             </td>
             <td class="px-6 py-4 text-right">
-                <p class="font-medium text-gray-700">${emp.worked_days} kun</p>
+                ${leaveTotal > 0 ? `
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                        <i class="fas fa-umbrella-beach mr-1"></i>
+                        ${leaveTotal} kun
+                    </span>
+                ` : '<span class="text-gray-400">-</span>'}
             </td>
             <td class="px-6 py-4 text-right">
-                <div>
-                    <p class="text-orange-600 font-medium">${emp.late_minutes} min</p>
-                    <p class="text-xs text-gray-500">${Math.floor(emp.late_minutes / 60)}s ${emp.late_minutes % 60}d</p>
-                </div>
+                ${salary.late_minutes > 0 ? `
+                    <span class="text-orange-600">${salary.late_minutes} min</span>
+                ` : '<span class="text-green-600">0</span>'}
             </td>
             <td class="px-6 py-4 text-right">
-                <p class="text-red-600 font-semibold">-${formatCurrency(emp.penalty_amount)}</p>
+                ${salary.penalty_amount > 0 ? `
+                    <span class="text-red-600 font-semibold">-${formatCurrency(salary.penalty_amount)}</span>
+                ` : '<span class="text-gray-400">0</span>'}
             </td>
             <td class="px-6 py-4 text-right">
-                <p class="text-green-600 font-semibold">+${formatCurrency(emp.bonus_amount)}</p>
+                ${salary.bonus_amount > 0 ? `
+                    <span class="text-green-600 font-semibold">+${formatCurrency(salary.bonus_amount)}</span>
+                ` : '<span class="text-gray-400">0</span>'}
             </td>
             <td class="px-6 py-4 text-right">
-                <p class="text-lg font-bold text-gray-800">${formatCurrency(emp.final_salary)}</p>
+                <span class="text-lg font-bold text-gray-800">${formatCurrency(salary.final_salary || 0)}</span>
             </td>
             <td class="px-6 py-4 text-center">
-                <button onclick="viewSalaryDetail('${emp.employee_id}')" class="text-blue-600 hover:text-blue-800" title="Batafsil">
+                <button onclick="viewSalaryDetail('${emp.employee_id || emp.id}')" class="btn-icon text-blue-600 hover:bg-blue-50" title="Batafsil">
                     <i class="fas fa-eye"></i>
                 </button>
             </td>
         </tr>
-    `).join('');
+    `}).join('');
 }
 
 async function loadRankings(month, year) {
@@ -495,8 +499,8 @@ async function loadRankings(month, year) {
             API.salary.getAttendanceRanking({ start_date: startDate, end_date: endDate, limit: 10 })
         ]);
 
-        renderLateRanking(lateRanking);
-        renderAttendanceRanking(attendanceRanking);
+        renderLateRanking(lateRanking?.ranking || lateRanking || []);
+        renderAttendanceRanking(attendanceRanking?.ranking || attendanceRanking || []);
     } catch (error) {
         console.error('Error loading rankings:', error);
     }
@@ -545,9 +549,7 @@ function renderAttendanceRanking(ranking) {
     const rows = ranking.map((item, index) => {
         const medalColors = ['text-yellow-500', 'text-gray-400', 'text-orange-600'];
         const medalColor = medalColors[index] || 'text-gray-300';
-        const percentage = item.total_expected_days > 0
-            ? ((item.total_days * 100) / item.total_expected_days).toFixed(1)
-            : 0;
+        const percentage = item.attendance_rate || 0;
 
         return `
             <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -559,7 +561,7 @@ function renderAttendanceRanking(ranking) {
                     </div>
                 </div>
                 <div class="text-right">
-                    <p class="text-green-600 font-semibold">${item.total_days} kun</p>
+                    <p class="text-green-600 font-semibold">${item.total_days || item.on_time_days || 0} kun</p>
                     <p class="text-xs text-gray-500">${percentage}%</p>
                 </div>
             </div>
@@ -581,13 +583,18 @@ function switchTab(tab) {
 
 // View salary detail modal
 function viewSalaryDetail(employeeId) {
-    const employee = salaryData.find(emp => emp.employee_id === employeeId);
+    const employee = salaryData.find(emp => (emp.employee_id || emp.id) === employeeId);
     if (!employee) {
         showNotification('Xodim topilmadi', 'error');
         return;
     }
 
-    const breakdown = employee.detailed_breakdown || {};
+    // Handle both direct salary data and nested salary object
+    const salary = employee.salary || employee;
+    const breakdown = salary.detailed_breakdown || {};
+    const excusedDays = salary.excused_days || [];
+    const excusedSummary = salary.excused_summary || {};
+    const leaveDays = salary.leave_days || {};
 
     const content = `
         <div class="space-y-6">
@@ -597,7 +604,7 @@ function viewSalaryDetail(employeeId) {
                 <p class="text-blue-100">${employee.employee_no} • ${employee.branch_name || 'N/A'} • ${employee.department_name || 'N/A'}</p>
             </div>
 
-            ${employee.salary_type === 'monthly' ? `
+            ${salary.salary_type === 'monthly' ? `
             <!-- Step 1: Full Month Calculation -->
             <div class="bg-gray-50 p-6 rounded-lg">
                 <h5 class="text-lg font-bold text-gray-800 mb-4">
@@ -631,7 +638,7 @@ function viewSalaryDetail(employeeId) {
                     Kunlik stavka (to'liq oy asosida)
                 </h5>
                 <div class="text-center">
-                    <p class="text-3xl font-bold text-green-600">${formatCurrency(employee.daily_rate || 0)}</p>
+                    <p class="text-3xl font-bold text-green-600">${formatCurrency(salary.daily_rate || 0)}</p>
                     <p class="text-sm text-gray-600 mt-2">
                         Formula: ${breakdown.step_2_daily_rate?.formula || 'N/A'}
                     </p>
@@ -642,35 +649,44 @@ function viewSalaryDetail(employeeId) {
             <!-- Step 3: Period Calculation -->
             <div class="bg-blue-50 p-6 rounded-lg">
                 <h5 class="text-lg font-bold text-gray-800 mb-4">
-                    <span class="bg-blue-500 text-white w-8 h-8 rounded-full inline-flex items-center justify-center mr-2">${employee.salary_type === 'monthly' ? '3' : '1'}</span>
+                    <span class="bg-blue-500 text-white w-8 h-8 rounded-full inline-flex items-center justify-center mr-2">${salary.salary_type === 'monthly' ? '3' : '1'}</span>
                     Hisoblangan davr
                 </h5>
                 <div class="grid grid-cols-3 gap-4 text-sm">
                     <div>
                         <p class="text-gray-600">Kutilgan ish kunlari:</p>
-                        <p class="font-semibold">${employee.expected_days || 0} kun</p>
+                        <p class="font-semibold">${salary.expected_days || 0} kun</p>
                     </div>
                     <div>
                         <p class="text-gray-600">Ishlangan kunlar:</p>
-                        <p class="font-semibold text-green-600">${employee.worked_days || 0} kun</p>
+                        <p class="font-semibold text-green-600">${salary.worked_days || 0} kun</p>
                     </div>
                     <div>
                         <p class="text-gray-600">Kelmagan kunlar:</p>
-                        <p class="font-semibold text-red-600">${employee.absence_days || 0} kun</p>
+                        <p class="font-semibold text-red-600">${salary.absence_days || 0} kun</p>
                     </div>
                 </div>
+                ${(leaveDays.total_count > 0) ? `
+                <div class="mt-4 p-3 bg-teal-100 rounded-lg">
+                    <p class="text-teal-800 font-medium">
+                        <i class="fas fa-umbrella-beach mr-2"></i>
+                        Dam olish: ${leaveDays.rest_count || 0} kun, Kasal: ${leaveDays.sick_count || 0} kun
+                        <span class="text-teal-600">— jarima hisoblanmadi</span>
+                    </p>
+                </div>
+                ` : ''}
             </div>
 
             <!-- Step 4: Gross Salary -->
             <div class="bg-purple-50 p-6 rounded-lg">
                 <h5 class="text-lg font-bold text-gray-800 mb-4">
-                    <span class="bg-purple-500 text-white w-8 h-8 rounded-full inline-flex items-center justify-center mr-2">${employee.salary_type === 'monthly' ? '4' : '2'}</span>
+                    <span class="bg-purple-500 text-white w-8 h-8 rounded-full inline-flex items-center justify-center mr-2">${salary.salary_type === 'monthly' ? '4' : '2'}</span>
                     Ishlangan ish haqi
                 </h5>
                 <div class="text-center">
-                    <p class="text-3xl font-bold text-purple-600">${formatCurrency(employee.calculated_salary || 0)}</p>
+                    <p class="text-3xl font-bold text-purple-600">${formatCurrency(salary.calculated_salary || 0)}</p>
                     <p class="text-sm text-gray-600 mt-2">
-                        ${breakdown.step_4_gross_salary?.formula || `${employee.worked_days} kun × ${formatCurrency(employee.daily_rate || 0)}`}
+                        ${breakdown.step_4_gross_salary?.formula || `${salary.worked_days} kun × ${formatCurrency(salary.daily_rate || 0)}`}
                     </p>
                 </div>
             </div>
@@ -678,23 +694,23 @@ function viewSalaryDetail(employeeId) {
             <!-- Step 5: Deductions -->
             <div class="bg-red-50 p-6 rounded-lg">
                 <h5 class="text-lg font-bold text-gray-800 mb-4">
-                    <span class="bg-red-500 text-white w-8 h-8 rounded-full inline-flex items-center justify-center mr-2">${employee.salary_type === 'monthly' ? '5' : '3'}</span>
+                    <span class="bg-red-500 text-white w-8 h-8 rounded-full inline-flex items-center justify-center mr-2">${salary.salary_type === 'monthly' ? '5' : '3'}</span>
                     Jarimalar
                 </h5>
 
                 <!-- Late Penalty -->
-                ${(employee.late_minutes > 0) ? `
+                ${(salary.late_minutes > 0) ? `
                 <div class="mb-4 pb-4 border-b border-red-200">
                     <div class="flex justify-between items-center mb-2">
                         <h6 class="font-semibold text-gray-700">🕐 Kech qolish jarimalari</h6>
-                        <span class="text-red-600 font-bold">-${formatCurrency(employee.auto_late_penalty || 0)}</span>
+                        <span class="text-red-600 font-bold">-${formatCurrency(salary.auto_late_penalty || 0)}</span>
                     </div>
                     <p class="text-sm text-gray-600 mb-2">
-                        ${employee.late_minutes} daqiqa × ${formatCurrency(employee.late_penalty_per_minute || 0)} = ${formatCurrency(employee.auto_late_penalty || 0)}
+                        ${salary.late_minutes} daqiqa × ${formatCurrency(salary.late_penalty_per_minute || 0)} = ${formatCurrency(salary.auto_late_penalty || 0)}
                     </p>
-                    ${(employee.late_details && employee.late_details.length > 0) ? `
+                    ${(salary.late_details && salary.late_details.length > 0) ? `
                     <div class="mt-2 space-y-1">
-                        ${employee.late_details.map(detail => `
+                        ${salary.late_details.map(detail => `
                             <div class="text-xs bg-white p-2 rounded flex justify-between">
                                 <span>${detail.date} ${detail.check_in_time ? '(' + detail.check_in_time + ')' : ''}</span>
                                 <span class="text-red-600">${detail.late_minutes} min</span>
@@ -706,24 +722,24 @@ function viewSalaryDetail(employeeId) {
                 ` : ''}
 
                 <!-- Absence Penalty -->
-                ${(employee.absence_days > 0 && employee.absence_penalty > 0) ? `
+                ${(salary.absence_days > 0 && salary.absence_penalty > 0) ? `
                 <div class="mb-4 pb-4 border-b border-red-200">
                     <div class="flex justify-between items-center mb-2">
                         <h6 class="font-semibold text-gray-700">❌ Kelmagan kunlar jarimasi</h6>
-                        <span class="text-red-600 font-bold">-${formatCurrency(employee.absence_penalty || 0)}</span>
+                        <span class="text-red-600 font-bold">-${formatCurrency(salary.absence_penalty || 0)}</span>
                     </div>
                     <p class="text-sm text-gray-600">
-                        ${employee.absence_days} kun × ${formatCurrency((employee.absence_penalty / employee.absence_days) || 0)} = ${formatCurrency(employee.absence_penalty || 0)}
+                        ${salary.absence_days} kun × ${formatCurrency((salary.absence_penalty / salary.absence_days) || 0)} = ${formatCurrency(salary.absence_penalty || 0)}
                     </p>
                 </div>
                 ` : ''}
 
                 <!-- Manual Penalties -->
-                ${(employee.manual_penalty > 0) ? `
+                ${(salary.manual_penalty > 0) ? `
                 <div class="mb-4 pb-4 border-b border-red-200">
                     <div class="flex justify-between items-center">
                         <h6 class="font-semibold text-gray-700">📝 Qo'lda kiritilgan jarimalar</h6>
-                        <span class="text-red-600 font-bold">-${formatCurrency(employee.manual_penalty || 0)}</span>
+                        <span class="text-red-600 font-bold">-${formatCurrency(salary.manual_penalty || 0)}</span>
                     </div>
                 </div>
                 ` : ''}
@@ -731,20 +747,60 @@ function viewSalaryDetail(employeeId) {
                 <!-- Total -->
                 <div class="flex justify-between items-center text-lg font-bold">
                     <span>JAMI JARIMA:</span>
-                    <span class="text-red-600">-${formatCurrency(employee.penalty_amount || 0)}</span>
+                    <span class="text-red-600">-${formatCurrency(salary.penalty_amount || 0)}</span>
                 </div>
             </div>
 
+            <!-- Excused Days (NEW) -->
+            ${excusedDays.length > 0 ? `
+            <div class="bg-teal-50 p-6 rounded-lg">
+                <h5 class="text-lg font-bold text-gray-800 mb-4">
+                    <span class="bg-teal-500 text-white w-8 h-8 rounded-full inline-flex items-center justify-center mr-2">
+                        <i class="fas fa-umbrella-beach text-sm"></i>
+                    </span>
+                    Jarima hisoblanmagan kunlar
+                </h5>
+                <div class="space-y-2 mb-4">
+                    ${excusedDays.map(day => `
+                        <div class="flex justify-between items-center bg-white p-3 rounded-lg">
+                            <div>
+                                <span class="font-medium">${day.date}</span>
+                                <span class="ml-2 text-xs px-2 py-1 rounded-full ${
+                                    day.reason === 'rest' ? 'bg-blue-100 text-blue-700' :
+                                    day.reason === 'sick' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-gray-100 text-gray-700'
+                                }">
+                                    ${day.reason_text || day.reason}
+                                </span>
+                            </div>
+                            <div class="text-right">
+                                ${day.late_minutes > 0 ? `<span class="text-gray-500 text-sm">${day.late_minutes} min kechikish</span>` : ''}
+                                ${day.penalty_saved > 0 ? `
+                                    <span class="text-teal-600 font-medium ml-2">
+                                        +${formatCurrency(day.penalty_saved)} tejaldi
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="flex justify-between items-center text-lg font-bold border-t border-teal-200 pt-4">
+                    <span>JAMI TEJANGAN:</span>
+                    <span class="text-teal-600">+${formatCurrency(excusedSummary.total_penalty_saved || 0)}</span>
+                </div>
+            </div>
+            ` : ''}
+
             <!-- Step 6: Bonuses -->
-            ${(employee.bonus_amount > 0) ? `
+            ${(salary.bonus_amount > 0) ? `
             <div class="bg-green-50 p-6 rounded-lg">
                 <h5 class="text-lg font-bold text-gray-800 mb-4">
-                    <span class="bg-green-500 text-white w-8 h-8 rounded-full inline-flex items-center justify-center mr-2">${employee.salary_type === 'monthly' ? '6' : '4'}</span>
+                    <span class="bg-green-500 text-white w-8 h-8 rounded-full inline-flex items-center justify-center mr-2">${salary.salary_type === 'monthly' ? '6' : '4'}</span>
                     Bonuslar
                 </h5>
                 <div class="text-center">
-                    <p class="text-3xl font-bold text-green-600">+${formatCurrency(employee.bonus_amount || 0)}</p>
-                    <p class="text-sm text-gray-600 mt-2">${employee.bonus_count || 0} ta bonus</p>
+                    <p class="text-3xl font-bold text-green-600">+${formatCurrency(salary.bonus_amount || 0)}</p>
+                    <p class="text-sm text-gray-600 mt-2">${salary.bonus_count || 0} ta bonus</p>
                 </div>
             </div>
             ` : ''}
@@ -752,13 +808,13 @@ function viewSalaryDetail(employeeId) {
             <!-- Step 7: Final Salary -->
             <div class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6 rounded-lg">
                 <h5 class="text-lg font-bold mb-4">
-                    <span class="bg-white text-indigo-600 w-8 h-8 rounded-full inline-flex items-center justify-center mr-2">${employee.salary_type === 'monthly' ? '7' : '5'}</span>
+                    <span class="bg-white text-indigo-600 w-8 h-8 rounded-full inline-flex items-center justify-center mr-2">${salary.salary_type === 'monthly' ? '7' : '5'}</span>
                     YAKUNIY OYLIK
                 </h5>
                 <div class="text-center">
-                    <p class="text-4xl font-bold mb-3">${formatCurrency(employee.final_salary || 0)}</p>
+                    <p class="text-4xl font-bold mb-3">${formatCurrency(salary.final_salary || 0)}</p>
                     <p class="text-indigo-100 text-sm">
-                        ${formatCurrency(employee.calculated_salary || 0)} - ${formatCurrency(employee.penalty_amount || 0)} + ${formatCurrency(employee.bonus_amount || 0)}
+                        ${formatCurrency(salary.calculated_salary || 0)} - ${formatCurrency(salary.penalty_amount || 0)} + ${formatCurrency(salary.bonus_amount || 0)}
                     </p>
                 </div>
             </div>
