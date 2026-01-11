@@ -323,7 +323,7 @@
                         <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
                             <span>Dushanba</span>
                             <label class="flex items-center cursor-pointer sm:hidden">
-                                <input type="checkbox" id="mon_off_mobile" class="mr-1" onchange="toggleDayOff('mon')">
+                                <input type="checkbox" id="mon_off_mobile" class="mr-1" onchange="toggleDayOff('mon', this)">
                                 <span class="text-xs text-gray-600">Dam</span>
                             </label>
                         </div>
@@ -337,7 +337,7 @@
                         </div>
                         <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
-                                <input type="checkbox" id="mon_off" class="mr-2" onchange="toggleDayOff('mon')">
+                                <input type="checkbox" id="mon_off" class="mr-2" onchange="toggleDayOff('mon', this)">
                                 <span class="text-sm text-gray-600">Dam olish</span>
                             </label>
                         </div>
@@ -348,7 +348,7 @@
                         <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
                             <span>Seshanba</span>
                             <label class="flex items-center cursor-pointer sm:hidden">
-                                <input type="checkbox" id="tue_off_mobile" class="mr-1" onchange="toggleDayOff('tue')">
+                                <input type="checkbox" id="tue_off_mobile" class="mr-1" onchange="toggleDayOff('tue', this)">
                                 <span class="text-xs text-gray-600">Dam</span>
                             </label>
                         </div>
@@ -362,7 +362,7 @@
                         </div>
                         <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
-                                <input type="checkbox" id="tue_off" class="mr-2" onchange="toggleDayOff('tue')">
+                                <input type="checkbox" id="tue_off" class="mr-2" onchange="toggleDayOff('tue', this)">
                                 <span class="text-sm text-gray-600">Dam olish</span>
                             </label>
                         </div>
@@ -373,7 +373,7 @@
                         <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
                             <span>Chorshanba</span>
                             <label class="flex items-center cursor-pointer sm:hidden">
-                                <input type="checkbox" id="wed_off_mobile" class="mr-1" onchange="toggleDayOff('wed')">
+                                <input type="checkbox" id="wed_off_mobile" class="mr-1" onchange="toggleDayOff('wed', this)">
                                 <span class="text-xs text-gray-600">Dam</span>
                             </label>
                         </div>
@@ -387,7 +387,7 @@
                         </div>
                         <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
-                                <input type="checkbox" id="wed_off" class="mr-2" onchange="toggleDayOff('wed')">
+                                <input type="checkbox" id="wed_off" class="mr-2" onchange="toggleDayOff('wed', this)">
                                 <span class="text-sm text-gray-600">Dam olish</span>
                             </label>
                         </div>
@@ -398,7 +398,7 @@
                         <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
                             <span>Payshanba</span>
                             <label class="flex items-center cursor-pointer sm:hidden">
-                                <input type="checkbox" id="thu_off_mobile" class="mr-1" onchange="toggleDayOff('thu')">
+                                <input type="checkbox" id="thu_off_mobile" class="mr-1" onchange="toggleDayOff('thu', this)">
                                 <span class="text-xs text-gray-600">Dam</span>
                             </label>
                         </div>
@@ -412,7 +412,7 @@
                         </div>
                         <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
-                                <input type="checkbox" id="thu_off" class="mr-2" onchange="toggleDayOff('thu')">
+                                <input type="checkbox" id="thu_off" class="mr-2" onchange="toggleDayOff('thu', this)">
                                 <span class="text-sm text-gray-600">Dam olish</span>
                             </label>
                         </div>
@@ -423,7 +423,7 @@
                         <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
                             <span>Juma</span>
                             <label class="flex items-center cursor-pointer sm:hidden">
-                                <input type="checkbox" id="fri_off_mobile" class="mr-1" onchange="toggleDayOff('fri')">
+                                <input type="checkbox" id="fri_off_mobile" class="mr-1" onchange="toggleDayOff('fri', this)">
                                 <span class="text-xs text-gray-600">Dam</span>
                             </label>
                         </div>
@@ -437,7 +437,7 @@
                         </div>
                         <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
-                                <input type="checkbox" id="fri_off" class="mr-2" onchange="toggleDayOff('fri')">
+                                <input type="checkbox" id="fri_off" class="mr-2" onchange="toggleDayOff('fri', this)">
                                 <span class="text-sm text-gray-600">Dam olish</span>
                             </label>
                         </div>
@@ -448,7 +448,7 @@
                         <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
                             <span>Shanba</span>
                             <label class="flex items-center cursor-pointer sm:hidden">
-                                <input type="checkbox" id="sat_off_mobile" class="mr-1" checked onchange="toggleDayOff('sat')">
+                                <input type="checkbox" id="sat_off_mobile" class="mr-1" checked onchange="toggleDayOff('sat', this)">
                                 <span class="text-xs text-gray-600">Dam</span>
                             </label>
                         </div>
@@ -462,7 +462,7 @@
                         </div>
                         <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
-                                <input type="checkbox" id="sat_off" class="mr-2" checked onchange="toggleDayOff('sat')">
+                                <input type="checkbox" id="sat_off" class="mr-2" checked onchange="toggleDayOff('sat', this)">
                                 <span class="text-sm text-gray-600">Dam olish</span>
                             </label>
                         </div>
@@ -473,7 +473,7 @@
                         <div class="sm:col-span-3 font-medium text-gray-700 text-sm w-full flex justify-between sm:block">
                             <span>Yakshanba</span>
                             <label class="flex items-center cursor-pointer sm:hidden">
-                                <input type="checkbox" id="sun_off_mobile" class="mr-1" checked onchange="toggleDayOff('sun')">
+                                <input type="checkbox" id="sun_off_mobile" class="mr-1" checked onchange="toggleDayOff('sun', this)">
                                 <span class="text-xs text-gray-600">Dam</span>
                             </label>
                         </div>
@@ -487,7 +487,7 @@
                         </div>
                         <div class="sm:col-span-3 hidden sm:flex items-center justify-center">
                             <label class="flex items-center cursor-pointer">
-                                <input type="checkbox" id="sun_off" class="mr-2" checked onchange="toggleDayOff('sun')">
+                                <input type="checkbox" id="sun_off" class="mr-2" checked onchange="toggleDayOff('sun', this)">
                                 <span class="text-sm text-gray-600">Dam olish</span>
                             </label>
                         </div>
@@ -1222,28 +1222,36 @@ function setupTimeInputs() {
 }
 
 // Toggle day off - disable/enable time inputs
-function toggleDayOff(day) {
-    // Sync desktop and mobile checkboxes
+function toggleDayOff(day, clickedElement) {
     const desktopCheckbox = document.getElementById(`${day}_off`);
     const mobileCheckbox = document.getElementById(`${day}_off_mobile`);
 
-    // Determine which was clicked and sync the other
-    const isOff = desktopCheckbox?.checked || mobileCheckbox?.checked;
+    let isOff;
+
+    if (clickedElement) {
+        // Agar element berilgan bo'lsa, uning qiymatini olish
+        isOff = clickedElement.checked;
+    } else {
+        // Element berilmagan bo'lsa, desktop checkbox'dan olish (programmatic call)
+        isOff = desktopCheckbox?.checked || false;
+    }
+
+    // Ikkala checkbox'ni sync qilish
     if (desktopCheckbox) desktopCheckbox.checked = isOff;
     if (mobileCheckbox) mobileCheckbox.checked = isOff;
 
     const startInput = document.getElementById(`${day}_start`);
     const endInput = document.getElementById(`${day}_end`);
 
-    startInput.disabled = isOff;
-    endInput.disabled = isOff;
+    if (startInput) startInput.disabled = isOff;
+    if (endInput) endInput.disabled = isOff;
 
     if (isOff) {
-        startInput.style.backgroundColor = '#f3f4f6';
-        endInput.style.backgroundColor = '#f3f4f6';
+        if (startInput) startInput.style.backgroundColor = '#f3f4f6';
+        if (endInput) endInput.style.backgroundColor = '#f3f4f6';
     } else {
-        startInput.style.backgroundColor = '';
-        endInput.style.backgroundColor = '';
+        if (startInput) startInput.style.backgroundColor = '';
+        if (endInput) endInput.style.backgroundColor = '';
     }
 }
 
