@@ -48,7 +48,7 @@
 
 <!-- Stats Cards -->
 <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
-    <div class="stat-card p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+    <div class="stat-card p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:opacity-90 transition" onclick="filterByStatus('')">
         <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-medium opacity-90">Jami xodimlar</h3>
             <i class="fas fa-users text-2xl opacity-50"></i>
@@ -56,7 +56,7 @@
         <p class="text-3xl font-bold" id="totalEmployees">0</p>
     </div>
 
-    <div class="stat-card p-6 bg-gradient-to-br from-green-500 to-green-600 text-white">
+    <div class="stat-card p-6 bg-gradient-to-br from-green-500 to-green-600 text-white cursor-pointer hover:opacity-90 transition" onclick="filterByStatus('present')">
         <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-medium opacity-90">Ishda</h3>
             <i class="fas fa-check-circle text-2xl opacity-50"></i>
@@ -65,7 +65,7 @@
         <p class="text-xs opacity-75" id="presentPercent">0%</p>
     </div>
 
-    <div class="stat-card p-6 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
+    <div class="stat-card p-6 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white cursor-pointer hover:opacity-90 transition" onclick="filterByStatus('late')">
         <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-medium opacity-90">Kech qolgan</h3>
             <i class="fas fa-clock text-2xl opacity-50"></i>
@@ -74,7 +74,7 @@
         <p class="text-xs opacity-75" id="avgLateMinutes">0 min</p>
     </div>
 
-    <div class="stat-card p-6 bg-gradient-to-br from-red-500 to-red-600 text-white">
+    <div class="stat-card p-6 bg-gradient-to-br from-red-500 to-red-600 text-white cursor-pointer hover:opacity-90 transition" onclick="filterByStatus('absent')">
         <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-medium opacity-90">Yo'q</h3>
             <i class="fas fa-times-circle text-2xl opacity-50"></i>
@@ -444,22 +444,41 @@ async function loadAttendance() {
         } else if (status === 'late') {
             attendanceLogs = attendanceLogs.filter(a => a.late_minutes > 0);
         } else if (status === 'absent') {
-            // Get all employees and find who's absent
-            const presentIds = attendanceLogs.map(a => a.employee_id);
-            const absentEmployees = allEmployees.filter(e => !presentIds.includes(e.id));
-            // Add absent employees to logs
-            attendanceLogs = absentEmployees.map(e => ({
-                    employee_id: e.id,
-                    employee_name: e.full_name,
-                    employee_no: e.employee_no,
-                    branch_name: e.branch_name,
-                    department_name: e.department_name,
-                    date: date,
-                    check_in_time: null,
-                    check_out_time: null,
-                    is_absent: true
-                }));
+            // Get all employees filtered by branch and department
+            let filteredEmployees = [...allEmployees];
 
+            // Apply branch filter
+            if (branchId) {
+                filteredEmployees = filteredEmployees.filter(e => e.branch_id === branchId);
+            }
+
+            // Apply department filter
+            if (departmentId) {
+                filteredEmployees = filteredEmployees.filter(e => e.department_id === departmentId);
+            }
+
+            console.log(`📋 Filtered employees count: ${filteredEmployees.length}`);
+
+            // Find who's absent from filtered employees
+            const presentIds = attendanceLogs.map(a => a.employee_id);
+            const absentEmployees = filteredEmployees.filter(e => !presentIds.includes(e.id));
+
+            console.log(`📊 Absent filter: ${absentEmployees.length} xodim kelmagan`);
+
+            // ONLY show absent employees (not present ones)
+            attendanceLogs = absentEmployees.map(e => ({
+                employee_id: e.id,
+                employee_name: e.full_name,
+                employee_no: e.employee_no,
+                branch_name: e.branch_name,
+                department_name: e.department_name,
+                branch_id: e.branch_id,
+                department_id: e.department_id,
+                date: date,
+                check_in_time: null,
+                check_out_time: null,
+                is_absent: true
+            }));
         }
 
         renderAttendanceTable();
@@ -629,6 +648,14 @@ function updateStats() {
     document.getElementById('absentCount').textContent = absent;
     document.getElementById('totalWorkHours').textContent = totalWorkHours;
 }
+
+
+// Filter by clicking on stat cards
+function filterByStatus(status) {
+    document.getElementById('statusFilter').value = status;
+    loadAttendance();
+}
+
 
 // ==========================================
 // KALENDAR FUNKSIYALARI
@@ -1268,15 +1295,20 @@ document.getElementById('statusFilter').addEventListener('change', loadAttendanc
 document.getElementById('calendarEmployee').addEventListener('change', loadCalendar);
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Set today's date
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('selectedDate').value = today;
     document.getElementById('selectedDateDisplay').textContent = formatDate(today);
 
-    loadBranches();
-    loadDepartments();
-    loadAllEmployees();
+    // Load data in correct order - WAIT for employees first
+    await Promise.all([
+        loadBranches(),
+        loadDepartments(),
+        loadAllEmployees()
+    ]);
+
+    // Now load attendance (allEmployees is ready)
     loadAttendance();
 });
 
