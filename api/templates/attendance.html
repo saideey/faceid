@@ -627,7 +627,20 @@ function getAttendanceStatusBadge(log) {
 }
 
 function updateStats() {
-    const total = allEmployees.length;
+    // Filterlarni olish
+    const branchId = document.getElementById('branchFilter').value;
+    const departmentId = document.getElementById('departmentFilter').value;
+
+    // Filtered employees - filial va bo'lim bo'yicha
+    let filteredEmployees = [...allEmployees];
+    if (branchId) {
+        filteredEmployees = filteredEmployees.filter(e => e.branch_id === branchId);
+    }
+    if (departmentId) {
+        filteredEmployees = filteredEmployees.filter(e => e.department_id === departmentId);
+    }
+
+    const total = filteredEmployees.length;  // ✅ Filter qilingan
     const present = attendanceLogs.filter(a => !a.is_absent).length;
     const late = attendanceLogs.filter(a => a.late_minutes > 0).length;
     const absent = total - present;
