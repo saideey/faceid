@@ -40,7 +40,14 @@ def get_settings():
                 overtime_threshold_minutes=30,
                 auto_penalty_enabled=False,
                 late_penalty_per_minute=1000,
-                absence_penalty_amount=50000
+                absence_penalty_amount=50000,
+                # YANGI: 3 bosqichli kechikish jarimasi
+                late_penalty_first=1000,
+                late_penalty_second=3000,
+                late_penalty_third=5000,
+                # YANGI: Erta ketish sozlamalari
+                early_leave_penalty_enabled=True,
+                daily_work_hours=8
             )
             db.add(settings)
             db.commit()
@@ -64,7 +71,20 @@ def get_settings():
             # Penalties
             'auto_penalty_enabled': settings.auto_penalty_enabled,
             'late_penalty_per_minute': settings.late_penalty_per_minute,
-            'absence_penalty_amount': settings.absence_penalty_amount
+            'absence_penalty_amount': settings.absence_penalty_amount,
+
+            # ==========================================
+            # YANGI: 3 bosqichli kechikish jarimasi
+            # ==========================================
+            'late_penalty_first': getattr(settings, 'late_penalty_first', 1000.0),
+            'late_penalty_second': getattr(settings, 'late_penalty_second', 3000.0),
+            'late_penalty_third': getattr(settings, 'late_penalty_third', 5000.0),
+
+            # ==========================================
+            # YANGI: Erta ketish jarima sozlamalari
+            # ==========================================
+            'early_leave_penalty_enabled': getattr(settings, 'early_leave_penalty_enabled', True),
+            'daily_work_hours': getattr(settings, 'daily_work_hours', 8)
         }
 
         logger.info(f"📋 Settings loaded for company {g.company_id}")
@@ -120,6 +140,24 @@ def update_settings():
             settings.late_penalty_per_minute = float(data['late_penalty_per_minute'])
         if 'absence_penalty_amount' in data:
             settings.absence_penalty_amount = float(data['absence_penalty_amount'])
+
+        # ==========================================
+        # YANGI: 3 bosqichli kechikish jarimasi
+        # ==========================================
+        if 'late_penalty_first' in data:
+            settings.late_penalty_first = float(data['late_penalty_first'])
+        if 'late_penalty_second' in data:
+            settings.late_penalty_second = float(data['late_penalty_second'])
+        if 'late_penalty_third' in data:
+            settings.late_penalty_third = float(data['late_penalty_third'])
+
+        # ==========================================
+        # YANGI: Erta ketish jarima sozlamalari
+        # ==========================================
+        if 'early_leave_penalty_enabled' in data:
+            settings.early_leave_penalty_enabled = data['early_leave_penalty_enabled']
+        if 'daily_work_hours' in data:
+            settings.daily_work_hours = int(data['daily_work_hours'])
 
         db.commit()
 

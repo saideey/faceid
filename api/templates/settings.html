@@ -103,19 +103,70 @@
             <p class="text-sm text-gray-500 ml-8 mt-1">Kech qolganlik uchun avtomatik jarima hisoblanadi</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <label class="form-label">Kechikish jarimasi (so'm/daqiqa)</label>
-                <input type="number" id="latePenaltyPerMinute" class="form-input" min="0" step="100"
-                       placeholder="1000">
-                <p class="text-xs text-gray-500 mt-1">Har bir kechikgan daqiqa uchun jarima</p>
+        <!-- 3 BOSQICHLI KECHIKISH JARIMASI -->
+        <div class="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
+            <h4 class="text-lg font-semibold text-orange-800 mb-4 flex items-center">
+                <i class="fas fa-layer-group mr-2"></i>
+                3 Bosqichli Kechikish Jarimasi
+            </h4>
+            <p class="text-sm text-orange-600 mb-4">
+                Oylik davomida xodim nechinchi marta kechikganiga qarab jarima stavkasi oshib boradi
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white rounded-lg p-4 border border-orange-200">
+                    <div class="flex items-center mb-2">
+                        <span class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center font-bold mr-2">1</span>
+                        <span class="font-medium text-gray-700">1-marta kechikish</span>
+                    </div>
+                    <label class="form-label text-sm">Jarima (so'm/daqiqa)</label>
+                    <input type="number" id="latePenaltyFirst" class="form-input" min="0" step="100" placeholder="1000">
+                </div>
+                
+                <div class="bg-white rounded-lg p-4 border border-orange-200">
+                    <div class="flex items-center mb-2">
+                        <span class="w-8 h-8 bg-yellow-500 text-white rounded-full flex items-center justify-center font-bold mr-2">2</span>
+                        <span class="font-medium text-gray-700">2-marta kechikish</span>
+                    </div>
+                    <label class="form-label text-sm">Jarima (so'm/daqiqa)</label>
+                    <input type="number" id="latePenaltySecond" class="form-input" min="0" step="100" placeholder="3000">
+                </div>
+                
+                <div class="bg-white rounded-lg p-4 border border-orange-200">
+                    <div class="flex items-center mb-2">
+                        <span class="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center font-bold mr-2">3+</span>
+                        <span class="font-medium text-gray-700">3+ marta kechikish</span>
+                    </div>
+                    <label class="form-label text-sm">Jarima (so'm/daqiqa)</label>
+                    <input type="number" id="latePenaltyThird" class="form-input" min="0" step="100" placeholder="5000">
+                </div>
             </div>
+            
+            <div class="mt-4 p-3 bg-orange-100 rounded-lg">
+                <p class="text-xs text-orange-700">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    <strong>Misol:</strong> Xodim oyda 3 marta kechiksa: 
+                    1-kun (10 daq × 1000 = 10,000), 
+                    2-kun (5 daq × 3000 = 15,000), 
+                    3-kun (8 daq × 5000 = 40,000). 
+                    <strong>Jami: 65,000 so'm</strong>
+                </p>
+            </div>
+        </div>
 
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
                 <label class="form-label">Kelmagan jarima (so'm)</label>
                 <input type="number" id="absencePenalty" class="form-input" min="0" step="1000"
                        placeholder="50000">
                 <p class="text-xs text-gray-500 mt-1">Ishga kelmagan kun uchun jarima</p>
+            </div>
+            
+            <div>
+                <label class="form-label">Kunlik ish soati</label>
+                <input type="number" id="dailyWorkHours" class="form-input" min="1" max="24"
+                       placeholder="8">
+                <p class="text-xs text-gray-500 mt-1">Erta ketish jarimasi hisoblash uchun</p>
             </div>
         </div>
     </div>
@@ -185,8 +236,14 @@ async function loadSettings() {
 
         // Penalty settings
         document.getElementById('autoPenaltyEnabled').checked = data.auto_penalty_enabled || false;
-        document.getElementById('latePenaltyPerMinute').value = data.late_penalty_per_minute || 1000;
+        
+        // 3 bosqichli kechikish jarimasi
+        document.getElementById('latePenaltyFirst').value = data.late_penalty_first || 1000;
+        document.getElementById('latePenaltySecond').value = data.late_penalty_second || 3000;
+        document.getElementById('latePenaltyThird').value = data.late_penalty_third || 5000;
+        
         document.getElementById('absencePenalty').value = data.absence_penalty_amount || 50000;
+        document.getElementById('dailyWorkHours').value = data.daily_work_hours || 8;
 
     } catch (error) {
         console.error('Error loading settings:', error);
@@ -210,8 +267,12 @@ async function saveSettings() {
             late_threshold_minutes: parseInt(document.getElementById('lateThreshold').value),
             overtime_threshold_minutes: parseInt(document.getElementById('overtimeThreshold').value),
             auto_penalty_enabled: document.getElementById('autoPenaltyEnabled').checked,
-            late_penalty_per_minute: parseFloat(document.getElementById('latePenaltyPerMinute').value),
-            absence_penalty_amount: parseFloat(document.getElementById('absencePenalty').value)
+            // 3 bosqichli kechikish jarimasi
+            late_penalty_first: parseFloat(document.getElementById('latePenaltyFirst').value) || 1000,
+            late_penalty_second: parseFloat(document.getElementById('latePenaltySecond').value) || 3000,
+            late_penalty_third: parseFloat(document.getElementById('latePenaltyThird').value) || 5000,
+            absence_penalty_amount: parseFloat(document.getElementById('absencePenalty').value),
+            daily_work_hours: parseInt(document.getElementById('dailyWorkHours').value) || 8
         };
 
         console.log('Saving settings:', data);

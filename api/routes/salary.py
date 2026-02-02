@@ -1,5 +1,5 @@
-from flask import Blueprint, request, jsonify, g
-from database import get_db, Employee, Penalty, Bonus, AttendanceLog, CompanySettings, EmployeeSchedule, EmployeeLeave
+from flask import Blueprint, request, jsonify, g, send_file
+from database import get_db, Employee, Penalty, Bonus, AttendanceLog, CompanySettings, EmployeeSchedule, EmployeeLeave, Branch
 from middleware.auth_middleware import require_auth
 from middleware.company_middleware import load_company_context
 from utils.helpers import success_response, error_response
@@ -8,6 +8,8 @@ from sqlalchemy import func, and_
 from sqlalchemy.orm import joinedload
 import calendar
 import logging
+import xlsxwriter
+import io
 
 salary_bp = Blueprint('salary', __name__)
 logger = logging.getLogger(__name__)
@@ -219,6 +221,12 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings, 
         excused_days = []  # YANGI - Jarima hisoblanmagan kunlar
         total_late_minutes = 0
 
+        # ==========================================
+        # YANGI: Erta ketish ma'lumotlari
+        # ==========================================
+        early_leave_details = []
+        total_early_leave_minutes = 0
+
         # Get employee schedule to check off days
         employee_schedules = db.query(EmployeeSchedule).filter_by(employee_id=employee.id).all()
         schedule_dict = {}
@@ -230,22 +238,17 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings, 
             schedule_dict = {1: False, 2: False, 3: False, 4: False, 5: False, 6: True, 7: True}
 
         for log in attendance_logs:
+            date_str = log.date.isoformat()
+            day_of_week = log.date.isoweekday()  # 1=Mon, 7=Sun
+            is_off_day = schedule_dict.get(day_of_week, False)
+            is_before_hire = employee.hire_date and log.date < employee.hire_date
+            is_leave_day = date_str in leave_dates
+            leave_type = leave_dates.get(date_str, None)
+
+            # ==========================================
+            # KECHIKISH (LATE) HISOBLASH
+            # ==========================================
             if log.late_minutes and log.late_minutes > 0:
-                date_str = log.date.isoformat()
-
-                # Check if this day is an off day for the employee
-                day_of_week = log.date.isoweekday()  # 1=Mon, 7=Sun
-                is_off_day = schedule_dict.get(day_of_week, False)
-
-                # Check if before hire date
-                is_before_hire = employee.hire_date and log.date < employee.hire_date
-
-                # ==========================================
-                # YANGI: Dam olish yoki kasal kuni tekshirish
-                # ==========================================
-                is_leave_day = date_str in leave_dates
-                leave_type = leave_dates.get(date_str, None)
-
                 # Only count late minutes if:
                 # 1. Not an off day
                 # 2. Not before hire date
@@ -256,6 +259,7 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings, 
                         'reason': 'off_day',
                         'reason_text': 'Dam olish kuni (jadval)',
                         'late_minutes': log.late_minutes,
+                        'early_leave_minutes': 0,
                         'penalty_saved': 0  # Will be calculated below
                     })
                     logger.info(f"⚪ {log.date}: Late ignored - Off day")
@@ -265,6 +269,7 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings, 
                         'reason': 'before_hire',
                         'reason_text': 'Ishga kirish sanasidan oldin',
                         'late_minutes': log.late_minutes,
+                        'early_leave_minutes': 0,
                         'penalty_saved': 0
                     })
                     logger.info(f"⚪ {log.date}: Late ignored - Before hire date")
@@ -278,6 +283,7 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings, 
                         'reason': leave_type,  # 'rest' or 'sick'
                         'reason_text': reason_text,
                         'late_minutes': log.late_minutes,
+                        'early_leave_minutes': 0,
                         'penalty_saved': 0  # Will be calculated below
                     })
                     logger.info(f"🏖️ {log.date}: Late ignored - {reason_text} ({log.late_minutes} min)")
@@ -290,22 +296,86 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings, 
                     })
                     total_late_minutes += log.late_minutes
 
-        # Calculate automatic late penalty
+            # ==========================================
+            # ERTA KETISH (EARLY LEAVE) HISOBLASH
+            # ==========================================
+            if log.early_leave_minutes and log.early_leave_minutes > 0:
+                # Erta ketish ham faqat ish kunlarida hisoblanadi
+                if not is_off_day and not is_before_hire and not is_leave_day:
+                    early_leave_details.append({
+                        'date': date_str,
+                        'early_leave_minutes': log.early_leave_minutes,
+                        'check_out_time': str(log.check_out_time) if log.check_out_time else None,
+                        'expected_end_time': company_settings.work_end_time if company_settings else '18:00'
+                    })
+                    total_early_leave_minutes += log.early_leave_minutes
+                    logger.info(f"🔴 {log.date}: Erta ketish {log.early_leave_minutes} daqiqa")
+
+        # ==========================================
+        # YANGI: 3 BOSQICHLI KECHIKISH JARIMASI HISOBLASH
+        # ==========================================
+        # Kechikish kunlarini sana bo'yicha tartiblash
+        late_details.sort(key=lambda x: x['date'])
+        
         auto_late_penalty = 0
-        late_penalty_per_minute = 0
-        if company_settings and getattr(company_settings, 'auto_penalty_enabled', False):
+        late_penalty_per_minute = 0  # Legacy uchun
+        
+        # 3 bosqichli stavkalar
+        late_penalty_first = 1000.0  # Default
+        late_penalty_second = 3000.0
+        late_penalty_third = 5000.0
+        
+        if company_settings:
+            late_penalty_first = getattr(company_settings, 'late_penalty_first', 1000.0)
+            late_penalty_second = getattr(company_settings, 'late_penalty_second', 3000.0)
+            late_penalty_third = getattr(company_settings, 'late_penalty_third', 5000.0)
+            # Legacy compatibility
             late_penalty_per_minute = getattr(company_settings, 'late_penalty_per_minute', 0)
-            if late_penalty_per_minute > 0 and total_late_minutes > 0:
-                auto_late_penalty = total_late_minutes * late_penalty_per_minute
+        
+        if company_settings and getattr(company_settings, 'auto_penalty_enabled', False):
+            # Har bir kechikish kuni uchun bosqich bo'yicha jarima hisoblash
+            for idx, detail in enumerate(late_details):
+                late_count = idx + 1  # Nechinchi marta kechikish
+                late_mins = detail['late_minutes']
+                
+                # Bosqich bo'yicha stavkani aniqlash
+                if late_count == 1:
+                    rate = late_penalty_first
+                    tier = '1-bosqich'
+                elif late_count == 2:
+                    rate = late_penalty_second
+                    tier = '2-bosqich'
+                else:
+                    rate = late_penalty_third
+                    tier = '3-bosqich'
+                
+                # Bu kun uchun jarima
+                day_penalty = late_mins * rate
+                auto_late_penalty += day_penalty
+                
+                # Detail ga qo'shimcha ma'lumot qo'shish
+                detail['late_count'] = late_count
+                detail['tier'] = tier
+                detail['rate_per_minute'] = rate
+                detail['penalty_amount'] = round(day_penalty, 2)
+                
                 logger.info(
-                    f"🔴 Late penalty: {total_late_minutes} min × {late_penalty_per_minute:,.0f} = {auto_late_penalty:,.0f}")
+                    f"🔴 Kechikish #{late_count} ({tier}): {detail['date']} - "
+                    f"{late_mins} min × {rate:,.0f} = {day_penalty:,.0f} so'm"
+                )
+            
+            if auto_late_penalty > 0:
+                logger.info(f"🔴 JAMI KECHIKISH JARIMASI: {auto_late_penalty:,.0f} so'm")
 
         # ==========================================
         # YANGI: Excused days uchun penalty_saved hisoblash
         # ==========================================
-        if late_penalty_per_minute > 0:
-            for excused in excused_days:
-                excused['penalty_saved'] = excused['late_minutes'] * late_penalty_per_minute
+        # Excused kunlar uchun qancha jarima tejalganini hisoblash
+        # (O'rtacha stavka asosida)
+        avg_late_rate = (late_penalty_first + late_penalty_second + late_penalty_third) / 3
+        for excused in excused_days:
+            if excused.get('late_minutes', 0) > 0:
+                excused['penalty_saved'] = round(excused['late_minutes'] * avg_late_rate, 2)
 
         # Get manual penalties
         penalties = db.query(Penalty).filter(
@@ -448,8 +518,52 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings, 
             full_month_end = end_date
             actual_end_date = end_date
 
-        # Total penalty = manual + auto late + absence
-        total_penalty_amount = manual_penalty_amount + auto_late_penalty + absence_penalty
+        # ==========================================
+        # YANGI: ERTA KETISH JARIMASI HISOBLASH
+        # ==========================================
+        # Formula: 
+        # 1. Kunlik ish daqiqalari = daily_work_hours × 60
+        # 2. Daqiqalik stavka = daily_rate / kunlik_ish_daqiqalari
+        # 3. Erta ketish jarimasi = erta_ketgan_daqiqalar × daqiqalik_stavka
+        #
+        # Misol: Kunlik maosh 200,000 so'm, 8 soat ish = 480 daqiqa
+        # Daqiqalik stavka = 200,000 / 480 = 416.67 so'm
+        # 60 daqiqa erta ketsa = 60 × 416.67 = 25,000 so'm jarima
+        
+        early_leave_penalty = 0
+        minute_rate = 0
+        daily_work_minutes = 480  # Default 8 soat = 480 daqiqa
+        
+        # Erta ketish jarimasi yoqilganmi tekshirish
+        early_leave_penalty_enabled = True  # Default yoqilgan
+        if company_settings:
+            early_leave_penalty_enabled = getattr(company_settings, 'early_leave_penalty_enabled', True)
+            daily_work_hours = getattr(company_settings, 'daily_work_hours', 8)
+            daily_work_minutes = daily_work_hours * 60
+        
+        if early_leave_penalty_enabled and daily_rate > 0 and daily_work_minutes > 0:
+            # Daqiqalik stavkani hisoblash
+            minute_rate = daily_rate / daily_work_minutes
+            
+            if total_early_leave_minutes > 0:
+                early_leave_penalty = total_early_leave_minutes * minute_rate
+                
+                logger.info(f"=" * 50)
+                logger.info(f"🕐 ERTA KETISH JARIMA HISOBLASH ({employee.full_name})")
+                logger.info(f"   Kunlik stavka: {daily_rate:,.2f} so'm")
+                logger.info(f"   Kunlik ish vaqti: {daily_work_minutes} daqiqa ({daily_work_minutes/60:.0f} soat)")
+                logger.info(f"   Daqiqalik stavka: {minute_rate:,.2f} so'm")
+                logger.info(f"   Jami erta ketish: {total_early_leave_minutes} daqiqa")
+                logger.info(f"   JARIMA: {total_early_leave_minutes} × {minute_rate:,.2f} = {early_leave_penalty:,.2f} so'm")
+                logger.info(f"=" * 50)
+                
+                # Har bir kun uchun jarima summasini qo'shish
+                for detail in early_leave_details:
+                    detail['minute_rate'] = round(minute_rate, 2)
+                    detail['penalty_amount'] = round(detail['early_leave_minutes'] * minute_rate, 2)
+
+        # Total penalty = manual + auto late + absence + EARLY LEAVE
+        total_penalty_amount = manual_penalty_amount + auto_late_penalty + absence_penalty + early_leave_penalty
 
         # Final salary = calculated - penalties + bonuses
         final_salary = calculated_salary - total_penalty_amount + total_bonus_amount
@@ -493,8 +607,28 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings, 
             # Penalties breakdown
             'late_minutes': total_late_minutes,
             'late_details': late_details,
-            'late_penalty_per_minute': late_penalty_per_minute,
+            'late_penalty_per_minute': late_penalty_per_minute,  # Legacy
             'auto_late_penalty': round(auto_late_penalty, 2),
+            
+            # ==========================================
+            # YANGI: 3 BOSQICHLI KECHIKISH JARIMASI
+            # ==========================================
+            'late_penalty_tiers': {
+                'first': late_penalty_first,
+                'second': late_penalty_second,
+                'third': late_penalty_third
+            },
+            'late_days_count': len(late_details),  # Necha kun kechikdi
+
+            # ==========================================
+            # YANGI: ERTA KETISH JARIMASI
+            # ==========================================
+            'early_leave_minutes': total_early_leave_minutes,
+            'early_leave_details': early_leave_details,
+            'early_leave_minute_rate': round(minute_rate, 2),
+            'early_leave_penalty': round(early_leave_penalty, 2),
+            'daily_work_minutes': daily_work_minutes,
+
             'absence_penalty': round(absence_penalty, 2),
             'manual_penalty': round(manual_penalty_amount, 2),
             'penalty_count': len(penalties),
@@ -560,6 +694,19 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings, 
                         # YANGI
                         'excused_note': f"{len([e for e in excused_days if e.get('late_minutes', 0) > 0])} kun kechikish jarima hisoblanmadi" if any(
                             e.get('late_minutes', 0) > 0 for e in excused_days) else None
+                    },
+                    # ==========================================
+                    # YANGI: ERTA KETISH JARIMASI
+                    # ==========================================
+                    'early_leave_penalty': {
+                        'total_minutes': total_early_leave_minutes,
+                        'daily_work_minutes': daily_work_minutes,
+                        'daily_rate': round(daily_rate, 2),
+                        'minute_rate': round(minute_rate, 2),
+                        'amount': round(early_leave_penalty, 2),
+                        'details': early_leave_details,
+                        'formula': f"{daily_rate:,.2f} / {daily_work_minutes} = {minute_rate:,.2f} so'm/daqiqa" if minute_rate > 0 else None,
+                        'calculation': f"{total_early_leave_minutes} daqiqa × {minute_rate:,.2f} = {early_leave_penalty:,.2f} so'm" if early_leave_penalty > 0 else None
                     },
                     'absence_penalty': {
                         'days': absence_days,
@@ -1372,6 +1519,298 @@ def get_payroll_summary():
 
     except Exception as e:
         logger.error(f"Error getting payroll summary: {str(e)}", exc_info=True)
+        return error_response(str(e), 500)
+    finally:
+        db.close()
+
+
+# ==========================================
+# EXCEL EXPORT - OYLIK HISOBOT
+# ==========================================
+@salary_bp.route('/export', methods=['GET'])
+@require_auth
+@load_company_context
+def export_salary_excel():
+    """
+    Oylik hisobotni Excel formatida yuklab olish
+    
+    Query params:
+    - start_date: Boshlanish sanasi (YYYY-MM-DD)
+    - end_date: Tugash sanasi (YYYY-MM-DD)  
+    - branch_id: Filial ID (optional)
+    """
+    db = get_db()
+    try:
+        # Get parameters
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+        branch_id = request.args.get('branch_id')
+
+        if not start_date_str or not end_date_str:
+            return error_response("start_date va end_date kerak", 400)
+
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Get company settings
+        company_settings = db.query(CompanySettings).filter_by(company_id=g.company_id).first()
+
+        # Get employees query
+        query = db.query(Employee).filter(
+            Employee.company_id == g.company_id,
+            Employee.status == 'active'
+        )
+        if branch_id:
+            query = query.filter(Employee.branch_id == branch_id)
+
+        employees = query.options(joinedload(Employee.branch)).all()
+
+        # Calculate salary for each employee
+        salary_data = []
+        totals = {
+            'base_salary': 0,
+            'calculated_salary': 0,
+            'late_penalty': 0,
+            'early_leave_penalty': 0,
+            'absence_penalty': 0,
+            'manual_penalty': 0,
+            'total_penalty': 0,
+            'bonus': 0,
+            'final_salary': 0
+        }
+
+        for employee in employees:
+            salary = calculate_employee_salary(employee, start_date, end_date, company_settings, db)
+            
+            emp_data = {
+                'full_name': employee.full_name,
+                'employee_no': employee.employee_no or '',
+                'branch_name': employee.branch.name if employee.branch else '-',
+                'position': employee.position or '-',
+                'base_salary': salary['base_salary'],
+                'daily_rate': salary['daily_rate'],
+                'worked_days': salary['worked_days'],
+                'expected_days': salary['expected_days'],
+                'late_minutes': salary['late_minutes'],
+                'late_penalty': salary['auto_late_penalty'],
+                'early_leave_minutes': salary.get('early_leave_minutes', 0),
+                'early_leave_penalty': salary.get('early_leave_penalty', 0),
+                'early_leave_minute_rate': salary.get('early_leave_minute_rate', 0),
+                'absence_days': salary['absence_days'],
+                'absence_penalty': salary['absence_penalty'],
+                'manual_penalty': salary['manual_penalty'],
+                'total_penalty': salary['penalty_amount'],
+                'bonus': salary['bonus_amount'],
+                'calculated_salary': salary['calculated_salary'],
+                'final_salary': salary['final_salary']
+            }
+            salary_data.append(emp_data)
+
+            # Update totals
+            totals['base_salary'] += salary['base_salary']
+            totals['calculated_salary'] += salary['calculated_salary']
+            totals['late_penalty'] += salary['auto_late_penalty']
+            totals['early_leave_penalty'] += salary.get('early_leave_penalty', 0)
+            totals['absence_penalty'] += salary['absence_penalty']
+            totals['manual_penalty'] += salary['manual_penalty']
+            totals['total_penalty'] += salary['penalty_amount']
+            totals['bonus'] += salary['bonus_amount']
+            totals['final_salary'] += salary['final_salary']
+
+        # Create Excel file
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        
+        # ==========================================
+        # SHEET 1: OYLIK JADVALI
+        # ==========================================
+        ws_salary = workbook.add_worksheet('Oylik jadvali')
+
+        # Formats
+        title_fmt = workbook.add_format({
+            'bold': True, 'font_size': 16, 'align': 'center', 'valign': 'vcenter',
+            'font_name': 'Arial'
+        })
+        header_fmt = workbook.add_format({
+            'bold': True, 'font_color': 'white', 'bg_color': '#1F4E78',
+            'font_name': 'Arial', 'font_size': 10, 'align': 'center', 
+            'valign': 'vcenter', 'border': 1, 'text_wrap': True
+        })
+        cell_fmt = workbook.add_format({
+            'font_name': 'Arial', 'font_size': 10, 'border': 1, 'valign': 'vcenter'
+        })
+        cell_center = workbook.add_format({
+            'font_name': 'Arial', 'font_size': 10, 'border': 1, 
+            'align': 'center', 'valign': 'vcenter'
+        })
+        money_fmt = workbook.add_format({
+            'font_name': 'Arial', 'font_size': 10, 'border': 1,
+            'num_format': '#,##0', 'align': 'right', 'valign': 'vcenter'
+        })
+        penalty_fmt = workbook.add_format({
+            'font_name': 'Arial', 'font_size': 10, 'border': 1,
+            'num_format': '#,##0', 'align': 'right', 'valign': 'vcenter',
+            'font_color': 'red'
+        })
+        bonus_fmt = workbook.add_format({
+            'font_name': 'Arial', 'font_size': 10, 'border': 1,
+            'num_format': '#,##0', 'align': 'right', 'valign': 'vcenter',
+            'font_color': 'green'
+        })
+        total_fmt = workbook.add_format({
+            'bold': True, 'font_name': 'Arial', 'font_size': 10, 'border': 2,
+            'num_format': '#,##0', 'align': 'right', 'valign': 'vcenter',
+            'bg_color': '#E2EFDA'
+        })
+        total_label_fmt = workbook.add_format({
+            'bold': True, 'font_name': 'Arial', 'font_size': 10, 'border': 2,
+            'align': 'center', 'valign': 'vcenter', 'bg_color': '#E2EFDA'
+        })
+
+        # Title
+        ws_salary.merge_range('A1:P1', f'OYLIK HISOBOT: {start_date_str} - {end_date_str}', title_fmt)
+        ws_salary.set_row(0, 30)
+
+        # Headers
+        headers = [
+            '№', 'Xodim', 'ID', 'Filial', 'Lavozim', 
+            'Asosiy\noylik', 'Kunlik\nstavka', 'Ishlangan\nkun', 'Kutilgan\nkun',
+            'Kechikish\n(daq)', 'Kechikish\njarimasi', 
+            'Erta ketish\n(daq)', 'Erta ketish\njarimasi',
+            'Jami\njarima', 'Bonus', 'Yakuniy\noylik'
+        ]
+        widths = [4, 25, 10, 15, 15, 15, 12, 10, 10, 10, 12, 10, 12, 12, 12, 15]
+
+        for col, width in enumerate(widths):
+            ws_salary.set_column(col, col, width)
+
+        ws_salary.set_row(2, 40)
+        for col, header in enumerate(headers):
+            ws_salary.write(2, col, header, header_fmt)
+
+        # Data rows
+        for row, emp in enumerate(salary_data, start=3):
+            ws_salary.set_row(row, 22)
+            ws_salary.write(row, 0, row - 2, cell_center)
+            ws_salary.write(row, 1, emp['full_name'], cell_fmt)
+            ws_salary.write(row, 2, emp['employee_no'], cell_center)
+            ws_salary.write(row, 3, emp['branch_name'], cell_fmt)
+            ws_salary.write(row, 4, emp['position'], cell_fmt)
+            ws_salary.write(row, 5, emp['base_salary'], money_fmt)
+            ws_salary.write(row, 6, emp['daily_rate'], money_fmt)
+            ws_salary.write(row, 7, emp['worked_days'], cell_center)
+            ws_salary.write(row, 8, emp['expected_days'], cell_center)
+            ws_salary.write(row, 9, emp['late_minutes'], cell_center)
+            ws_salary.write(row, 10, emp['late_penalty'], penalty_fmt if emp['late_penalty'] > 0 else money_fmt)
+            ws_salary.write(row, 11, emp['early_leave_minutes'], cell_center)
+            ws_salary.write(row, 12, emp['early_leave_penalty'], penalty_fmt if emp['early_leave_penalty'] > 0 else money_fmt)
+            ws_salary.write(row, 13, emp['total_penalty'], penalty_fmt if emp['total_penalty'] > 0 else money_fmt)
+            ws_salary.write(row, 14, emp['bonus'], bonus_fmt if emp['bonus'] > 0 else money_fmt)
+            ws_salary.write(row, 15, emp['final_salary'], money_fmt)
+
+        # Totals row
+        total_row = len(salary_data) + 3
+        ws_salary.set_row(total_row, 25)
+        ws_salary.merge_range(total_row, 0, total_row, 4, 'JAMI:', total_label_fmt)
+        ws_salary.write(total_row, 5, totals['base_salary'], total_fmt)
+        ws_salary.write(total_row, 6, '', total_fmt)
+        ws_salary.write(total_row, 7, '', total_fmt)
+        ws_salary.write(total_row, 8, '', total_fmt)
+        ws_salary.write(total_row, 9, '', total_fmt)
+        ws_salary.write(total_row, 10, totals['late_penalty'], total_fmt)
+        ws_salary.write(total_row, 11, '', total_fmt)
+        ws_salary.write(total_row, 12, totals['early_leave_penalty'], total_fmt)
+        ws_salary.write(total_row, 13, totals['total_penalty'], total_fmt)
+        ws_salary.write(total_row, 14, totals['bonus'], total_fmt)
+        ws_salary.write(total_row, 15, totals['final_salary'], total_fmt)
+
+        # ==========================================
+        # SHEET 2: ERTA KETISH TAFSILOTLARI
+        # ==========================================
+        ws_early = workbook.add_worksheet('Erta ketish tafsilotlari')
+        
+        ws_early.merge_range('A1:G1', 'ERTA KETISH JARIMALARI TAFSILOTI', title_fmt)
+        ws_early.set_row(0, 30)
+        
+        early_headers = ['№', 'Xodim', 'Filial', 'Kunlik stavka', 'Daqiqalik stavka', 'Jami erta ketish (daq)', 'Jarima summasi']
+        early_widths = [4, 25, 15, 15, 15, 18, 15]
+        
+        for col, width in enumerate(early_widths):
+            ws_early.set_column(col, col, width)
+        
+        ws_early.set_row(2, 30)
+        for col, header in enumerate(early_headers):
+            ws_early.write(2, col, header, header_fmt)
+        
+        row_num = 3
+        for idx, emp in enumerate(salary_data, start=1):
+            if emp['early_leave_minutes'] > 0:
+                ws_early.write(row_num, 0, idx, cell_center)
+                ws_early.write(row_num, 1, emp['full_name'], cell_fmt)
+                ws_early.write(row_num, 2, emp['branch_name'], cell_fmt)
+                ws_early.write(row_num, 3, emp['daily_rate'], money_fmt)
+                ws_early.write(row_num, 4, emp['early_leave_minute_rate'], money_fmt)
+                ws_early.write(row_num, 5, emp['early_leave_minutes'], cell_center)
+                ws_early.write(row_num, 6, emp['early_leave_penalty'], penalty_fmt)
+                row_num += 1
+        
+        if row_num == 3:
+            ws_early.write(3, 0, 'Erta ketish ma\'lumotlari yo\'q', cell_fmt)
+
+        # ==========================================
+        # SHEET 3: XULOSA
+        # ==========================================
+        ws_summary = workbook.add_worksheet('Xulosa')
+        
+        summary_title = workbook.add_format({
+            'bold': True, 'font_size': 14, 'font_name': 'Arial'
+        })
+        summary_label = workbook.add_format({
+            'font_name': 'Arial', 'font_size': 11, 'bold': True
+        })
+        summary_value = workbook.add_format({
+            'font_name': 'Arial', 'font_size': 11, 'num_format': '#,##0'
+        })
+        
+        ws_summary.set_column(0, 0, 30)
+        ws_summary.set_column(1, 1, 20)
+        
+        ws_summary.write('A1', 'OYLIK HISOBOT XULOSASI', summary_title)
+        ws_summary.write('A2', f'Davr: {start_date_str} - {end_date_str}')
+        
+        ws_summary.write('A4', 'Ko\'rsatkich', summary_label)
+        ws_summary.write('B4', 'Qiymat', summary_label)
+        
+        summary_data = [
+            ('Jami xodimlar soni', len(salary_data)),
+            ('Jami asosiy oylik', totals['base_salary']),
+            ('Jami kechikish jarimasi', totals['late_penalty']),
+            ('Jami erta ketish jarimasi', totals['early_leave_penalty']),
+            ('Jami kelmaslik jarimasi', totals['absence_penalty']),
+            ('Jami qo\'lda jarimalar', totals['manual_penalty']),
+            ('JAMI JARIMALAR', totals['total_penalty']),
+            ('Jami bonuslar', totals['bonus']),
+            ('YAKUNIY TO\'LOV', totals['final_salary']),
+        ]
+        
+        for i, (label, value) in enumerate(summary_data, start=5):
+            ws_summary.write(f'A{i}', label, summary_label)
+            ws_summary.write(f'B{i}', value, summary_value)
+
+        workbook.close()
+        output.seek(0)
+
+        filename = f"Oylik_hisobot_{start_date_str}_{end_date_str}.xlsx"
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        logger.error(f"Error exporting salary: {str(e)}", exc_info=True)
         return error_response(str(e), 500)
     finally:
         db.close()

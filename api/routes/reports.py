@@ -281,9 +281,15 @@ def export_attendance():
             'bg_color': '#FFF3CD', 'align': 'center'
         })
 
-        # Headers
-        headers = ['Sana', 'Xodim', 'Filial', 'Kirish', 'Chiqish', 'Ish vaqti', 'Kech qolish', 'Holat']
-        widths = [12, 30, 20, 12, 12, 12, 12, 15]
+        # YANGI: Erta ketish uchun format
+        early_leave_fmt = workbook.add_format({
+            'font_name': 'Calibri', 'font_size': 10, 'border': 1,
+            'bg_color': '#F8D7DA', 'align': 'center'
+        })
+
+        # Headers - YANGI: Erta ketish ustuni qo'shildi
+        headers = ['Sana', 'Xodim', 'Filial', 'Kirish', 'Chiqish', 'Ish vaqti', 'Kech qolish', 'Erta ketish', 'Holat']
+        widths = [12, 30, 20, 12, 12, 12, 12, 12, 20]
 
         for i, width in enumerate(widths):
             worksheet.set_column(i, i, width)
@@ -296,8 +302,21 @@ def export_attendance():
         for row, log in enumerate(logs, start=1):
             worksheet.set_row(row, 20)
 
-            status = 'O\'z vaqtida' if not log.late_minutes or log.late_minutes == 0 else f'Kech: {log.late_minutes} min'
-            late_cell_fmt = late_fmt if log.late_minutes and log.late_minutes > 0 else cell_center
+            # Holat tuzish - kechikish va erta ketishni hisobga olish
+            status_parts = []
+            if log.late_minutes and log.late_minutes > 0:
+                status_parts.append(f'Kech: {log.late_minutes} min')
+            if log.early_leave_minutes and log.early_leave_minutes > 0:
+                status_parts.append(f'Erta: {log.early_leave_minutes} min')
+            status = ', '.join(status_parts) if status_parts else 'O\'z vaqtida'
+            
+            # Format tanlash
+            if log.late_minutes and log.late_minutes > 0:
+                status_fmt = late_fmt
+            elif log.early_leave_minutes and log.early_leave_minutes > 0:
+                status_fmt = early_leave_fmt
+            else:
+                status_fmt = cell_center
 
             worksheet.write(row, 0, log.date.strftime('%d.%m.%Y'), cell_center)
             worksheet.write(row, 1, log.employee.full_name, cell_fmt)
@@ -305,8 +324,10 @@ def export_attendance():
             worksheet.write(row, 3, log.check_in_time.strftime('%H:%M') if log.check_in_time else '-', cell_center)
             worksheet.write(row, 4, log.check_out_time.strftime('%H:%M') if log.check_out_time else '-', cell_center)
             worksheet.write(row, 5, f"{int(log.total_work_minutes/60)}:{int(log.total_work_minutes%60):02d}" if log.total_work_minutes else '-', cell_center)
-            worksheet.write(row, 6, log.late_minutes or 0, cell_center)
-            worksheet.write(row, 7, status, late_cell_fmt)
+            worksheet.write(row, 6, log.late_minutes or 0, late_fmt if log.late_minutes and log.late_minutes > 0 else cell_center)
+            # YANGI: Erta ketish ustuni
+            worksheet.write(row, 7, log.early_leave_minutes or 0, early_leave_fmt if log.early_leave_minutes and log.early_leave_minutes > 0 else cell_center)
+            worksheet.write(row, 8, status, status_fmt)
 
         workbook.close()
         output.seek(0)

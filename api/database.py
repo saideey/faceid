@@ -157,9 +157,28 @@ class CompanySettings(Base):
 
     # Penalty settings
     auto_penalty_enabled = Column(Boolean, default=False)
-    late_penalty_per_minute = Column(Float, default=1000.0)
+    late_penalty_per_minute = Column(Float, default=1000.0)  # Legacy - eski tizim uchun
     absence_penalty_amount = Column(Float, default=50000.0)
     penalty_per_minute = Column(Float, default=0.0)  # Legacy field
+
+    # ==========================================
+    # YANGI: 3 BOSQICHLI KECHIKISH JARIMASI
+    # ==========================================
+    # Oylik davomida:
+    # 1-marta kechikish uchun jarima (so'm/daqiqa)
+    late_penalty_first = Column(Float, default=1000.0)
+    # 2-marta kechikish uchun jarima (so'm/daqiqa)
+    late_penalty_second = Column(Float, default=3000.0)
+    # 3+ marta kechikish uchun jarima (so'm/daqiqa)
+    late_penalty_third = Column(Float, default=5000.0)
+
+    # ==========================================
+    # YANGI: Erta ketish jarima sozlamalari
+    # ==========================================
+    # Erta ketish jarimasi yoqilgan/o'chirilgan
+    early_leave_penalty_enabled = Column(Boolean, default=True)
+    # Kunlik ish soatlari (default 8 soat = 480 daqiqa)
+    daily_work_hours = Column(Integer, default=8)
 
     currency = Column(String(10), default='UZS')
 
@@ -181,6 +200,13 @@ class CompanySettings(Base):
             'auto_penalty_enabled': self.auto_penalty_enabled,
             'late_penalty_per_minute': self.late_penalty_per_minute,
             'absence_penalty_amount': self.absence_penalty_amount,
+            # YANGI: 3 bosqichli kechikish jarimasi
+            'late_penalty_first': getattr(self, 'late_penalty_first', 1000.0),
+            'late_penalty_second': getattr(self, 'late_penalty_second', 3000.0),
+            'late_penalty_third': getattr(self, 'late_penalty_third', 5000.0),
+            # YANGI: Erta ketish jarima sozlamalari
+            'early_leave_penalty_enabled': self.early_leave_penalty_enabled,
+            'daily_work_hours': self.daily_work_hours,
             'default_work_start': str(self.default_work_start) if self.default_work_start else None,
             'default_work_end': str(self.default_work_end) if self.default_work_end else None,
             'grace_period_minutes': self.grace_period_minutes,
@@ -747,6 +773,46 @@ def run_migrations():
         #     conn.commit()
         # except Exception as e:
         #     print(f"  ⚠️ Column migration skipped: {e}")
+
+        # ==========================================
+        # 2. ERTA KETISH JARIMA USTUNLARINI QO'SHISH
+        # ==========================================
+        print("  📦 Adding early leave penalty columns to company_settings...")
+        try:
+            conn.execute(text("""
+                ALTER TABLE company_settings 
+                ADD COLUMN IF NOT EXISTS early_leave_penalty_enabled BOOLEAN DEFAULT TRUE;
+            """))
+            conn.execute(text("""
+                ALTER TABLE company_settings 
+                ADD COLUMN IF NOT EXISTS daily_work_hours INTEGER DEFAULT 8;
+            """))
+            conn.commit()
+            print("  ✅ Early leave penalty columns added successfully!")
+        except Exception as e:
+            print(f"  ⚠️ Early leave columns migration skipped (may already exist): {e}")
+
+        # ==========================================
+        # 3. 3 BOSQICHLI KECHIKISH JARIMASI USTUNLARINI QO'SHISH
+        # ==========================================
+        print("  📦 Adding 3-tier late penalty columns to company_settings...")
+        try:
+            conn.execute(text("""
+                ALTER TABLE company_settings 
+                ADD COLUMN IF NOT EXISTS late_penalty_first FLOAT DEFAULT 1000.0;
+            """))
+            conn.execute(text("""
+                ALTER TABLE company_settings 
+                ADD COLUMN IF NOT EXISTS late_penalty_second FLOAT DEFAULT 3000.0;
+            """))
+            conn.execute(text("""
+                ALTER TABLE company_settings 
+                ADD COLUMN IF NOT EXISTS late_penalty_third FLOAT DEFAULT 5000.0;
+            """))
+            conn.commit()
+            print("  ✅ 3-tier late penalty columns added successfully!")
+        except Exception as e:
+            print(f"  ⚠️ 3-tier late penalty columns migration skipped (may already exist): {e}")
 
     print("✅ Database migrations completed!")
 
