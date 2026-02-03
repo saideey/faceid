@@ -5,12 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43a4ad98-27c3-4ff2-9d39-8c3b72efcdd0" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/api/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/api/database.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/api/routes/reports.py" beforeDir="false" afterPath="$PROJECT_DIR$/api/routes/reports.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/api/routes/salary.py" beforeDir="false" afterPath="$PROJECT_DIR$/api/routes/salary.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/api/routes/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/api/routes/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/api/templates/salary.html" beforeDir="false" afterPath="$PROJECT_DIR$/api/templates/salary.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/api/templates/settings.html" beforeDir="false" afterPath="$PROJECT_DIR$/api/templates/settings.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/logs/app.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/routes/terminal.py" beforeDir="false" afterPath="$PROJECT_DIR$/api/routes/terminal.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -48,21 +46,22 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/i.saidov/PycharmProjects/face_id&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "DefaultHtmlFileTemplate": "HTML File",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "C:/Users/i.saidov/PycharmProjects/face_id/api/routes",
+    "to.speed.mode.migration.done": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\i.saidov\PycharmProjects\face_id\api\routes" />
       <recent name="C:\Users\i.saidov\PycharmProjects\face_id" />
     </key>
   </component>

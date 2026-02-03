@@ -20,6 +20,60 @@ terminal_bp = Blueprint('terminal', __name__)
 logger = logging.getLogger(__name__)
 
 
+# ==========================================
+# POLIMORFIK DATA EXTRACTION
+# Yangi Hikvision terminallar multipart/form-data
+# yuboradi, eski terminallar raw JSON body yuboradi
+# ==========================================
+def extract_terminal_data(request_obj):
+    """
+    Hikvision terminalidan kelgan ma'lumotlarni turli formatlardan olish:
+    1. multipart/form-data (event_log maydoni) - YANGI FORMAT
+    2. raw JSON body (re.search bilan) - ESKI FORMAT
+    
+    Returns:
+        dict yoki None
+    """
+    data = None
+    
+    # ==========================================
+    # 1-USUL: multipart/form-data (event_log)
+    # ==========================================
+    if request_obj.form and 'event_log' in request_obj.form:
+        try:
+            event_log_str = request_obj.form.get('event_log')
+            logger.info("📦 FORMAT: multipart/form-data (event_log)")
+            data = json.loads(event_log_str)
+            logger.info("✅ event_log dan JSON muvaffaqiyatli parsed")
+            
+            # Rasm fayli bormi?
+            if request_obj.files:
+                for key, file in request_obj.files.items():
+                    logger.info(f"📸 Rasm: {key} = {file.filename}")
+            
+            return data
+        except json.JSONDecodeError as e:
+            logger.warning(f"⚠️ event_log JSON parse xatolik: {e}")
+    
+    # ==========================================
+    # 2-USUL: raw JSON body (ESKI LOGIKA)
+    # ==========================================
+    try:
+        raw_data = request_obj.get_data().decode('utf-8', errors='ignore')
+        if raw_data:
+            logger.info("📦 FORMAT: raw body")
+            json_match = re.search(r'({.*})', raw_data, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+                data = json.loads(json_str)
+                logger.info("✅ raw body dan JSON muvaffaqiyatli parsed")
+                return data
+    except Exception as e:
+        logger.error(f"❌ raw data parse xatolik: {e}")
+    
+    return None
+
+
 def parse_hikvision_datetime(date_string):
     """
     Parse Hikvision datetime format to Tashkent timezone
@@ -67,25 +121,28 @@ def parse_hikvision_datetime(date_string):
 def terminal_checkin_with_branch(company_id, branch_id):
     """
     KIRISH TERMINALI - Faqat kirish uchun
+    
+    Qo'llab-quvvatlanadigan formatlar:
+    1. multipart/form-data (event_log) - YANGI
+    2. raw JSON body - MAVJUD
     """
     db = None
 
     try:
-        # ✅ LOG RAW DATA
-        raw_data = request.get_data().decode('utf-8', errors='ignore')
+        # ✅ LOG INCOMING REQUEST
         logger.info("=" * 70)
-        logger.info("🔵 RAW DATA RECEIVED (CHECK-IN):")
-        logger.info(raw_data)
+        logger.info("🔵 KIRISH SIGNALI KELDI (CHECK-IN)")
+        logger.info(f"📦 Content-Type: {request.content_type}")
         logger.info("=" * 70)
 
-        # Get raw data
-        json_match = re.search(r'({.*})', raw_data, re.DOTALL)
-        if not json_match:
+        # ==========================================
+        # POLIMORFIK DATA EXTRACTION
+        # ==========================================
+        data = extract_terminal_data(request)
+        
+        if not data:
             logger.warning("⚠️ No JSON found in request")
             return "OK", 200
-
-        json_str = json_match.group(1)
-        data = json.loads(json_str)
 
         # ✅ LOG PARSED JSON
         logger.info("🔵 PARSED JSON:")
@@ -100,6 +157,18 @@ def terminal_checkin_with_branch(company_id, branch_id):
             return "OK", 200
 
         event_info = data.get('AccessControllerEvent', {})
+
+        # ==========================================
+        # YANGI: subEventType TEKSHIRUVI
+        # 75 = Yuz muvaffaqiyatli tanilgan
+        # Boshqa qiymatlar (21, 8, 9...) = Eshik/Tizim signallari
+        # ==========================================
+        sub_event_type = event_info.get('subEventType')
+        logger.info(f"🔵 SUB-EVENT TYPE: {sub_event_type}")
+
+        if sub_event_type != 75:
+            logger.info(f"ℹ️ Keraksiz signal (Eshik/Tizim): {sub_event_type}. O'tkazib yuborildi.")
+            return "OK", 200
 
         # ✅ LOG ALL POSSIBLE EMPLOYEE ID FIELDS
         logger.info("🔵 CHECKING EMPLOYEE ID FIELDS:")
@@ -272,24 +341,28 @@ def terminal_checkin_with_branch(company_id, branch_id):
 def terminal_checkout_with_branch(company_id, branch_id):
     """
     CHIQISH TERMINALI - Faqat chiqish uchun
+    
+    Qo'llab-quvvatlanadigan formatlar:
+    1. multipart/form-data (event_log) - YANGI
+    2. raw JSON body - MAVJUD
     """
     db = None
 
     try:
-        # ✅ LOG RAW DATA
-        raw_data = request.get_data().decode('utf-8', errors='ignore')
+        # ✅ LOG INCOMING REQUEST
         logger.info("=" * 70)
-        logger.info("🔴 RAW DATA RECEIVED (CHECK-OUT):")
-        logger.info(raw_data)
+        logger.info("🔴 CHIQISH SIGNALI KELDI (CHECK-OUT)")
+        logger.info(f"📦 Content-Type: {request.content_type}")
         logger.info("=" * 70)
 
-        json_match = re.search(r'({.*})', raw_data, re.DOTALL)
-        if not json_match:
+        # ==========================================
+        # POLIMORFIK DATA EXTRACTION
+        # ==========================================
+        data = extract_terminal_data(request)
+        
+        if not data:
             logger.warning("⚠️ No JSON found in request")
             return "OK", 200
-
-        json_str = json_match.group(1)
-        data = json.loads(json_str)
 
         # ✅ LOG PARSED JSON
         logger.info("🔴 PARSED JSON:")
@@ -303,6 +376,18 @@ def terminal_checkout_with_branch(company_id, branch_id):
             return "OK", 200
 
         event_info = data.get('AccessControllerEvent', {})
+
+        # ==========================================
+        # YANGI: subEventType TEKSHIRUVI
+        # 75 = Yuz muvaffaqiyatli tanilgan
+        # Boshqa qiymatlar (21, 8, 9...) = Eshik/Tizim signallari
+        # ==========================================
+        sub_event_type = event_info.get('subEventType')
+        logger.info(f"🔴 SUB-EVENT TYPE: {sub_event_type}")
+
+        if sub_event_type != 75:
+            logger.info(f"ℹ️ Keraksiz signal (Eshik/Tizim): {sub_event_type}. O'tkazib yuborildi.")
+            return "OK", 200
 
         # ✅ LOG ALL POSSIBLE EMPLOYEE ID FIELDS
         logger.info("🔴 CHECKING EMPLOYEE ID FIELDS:")
@@ -473,6 +558,10 @@ def test_terminal():
     return jsonify({
         'status': 'active',
         'message': 'Hikvision Terminal Integration - Multi-Tenant with Branches',
+        'supported_formats': [
+            'multipart/form-data (event_log field) - YANGI',
+            'raw JSON body - MAVJUD'
+        ],
         'url_format': {
             'check_in': '/api/terminal/{company_id}/{branch_id}/checkin',
             'check_out': '/api/terminal/{company_id}/{branch_id}/checkout'
