@@ -22,20 +22,20 @@ logger = logging.getLogger(__name__)
 
 # ==========================================
 # POLIMORFIK DATA EXTRACTION
-# Yangi Hikvision terminallar multipart/form-data
-# yuboradi, eski terminallar raw JSON body yuboradi
+# Hikvision terminallar turli formatda yuboradi
 # ==========================================
 def extract_terminal_data(request_obj):
     """
     Hikvision terminalidan kelgan ma'lumotlarni turli formatlardan olish:
-    1. multipart/form-data (event_log maydoni) - YANGI FORMAT
-    2. raw JSON body (re.search bilan) - ESKI FORMAT
-    
+    1. multipart/form-data (event_log maydoni)
+    2. multipart/form-data (AccessControllerEvent maydoni) - YANGI
+    3. raw JSON body (re.search bilan) - ESKI FORMAT
+
     Returns:
         dict yoki None
     """
     data = None
-    
+
     # ==========================================
     # 1-USUL: multipart/form-data (event_log)
     # ==========================================
@@ -45,18 +45,58 @@ def extract_terminal_data(request_obj):
             logger.info("📦 FORMAT: multipart/form-data (event_log)")
             data = json.loads(event_log_str)
             logger.info("✅ event_log dan JSON muvaffaqiyatli parsed")
-            
+
             # Rasm fayli bormi?
             if request_obj.files:
                 for key, file in request_obj.files.items():
                     logger.info(f"📸 Rasm: {key} = {file.filename}")
-            
+
             return data
         except json.JSONDecodeError as e:
             logger.warning(f"⚠️ event_log JSON parse xatolik: {e}")
-    
+
     # ==========================================
-    # 2-USUL: raw JSON body (ESKI LOGIKA)
+    # 2-USUL: multipart/form-data (AccessControllerEvent)
+    # Ba'zi terminallar shu formatda yuboradi
+    # ==========================================
+    if request_obj.form and 'AccessControllerEvent' in request_obj.form:
+        try:
+            event_str = request_obj.form.get('AccessControllerEvent')
+            logger.info("📦 FORMAT: multipart/form-data (AccessControllerEvent)")
+            data = json.loads(event_str)
+            logger.info("✅ AccessControllerEvent dan JSON muvaffaqiyatli parsed")
+
+            # Rasm fayli bormi?
+            if request_obj.files:
+                for key, file in request_obj.files.items():
+                    logger.info(f"📸 Rasm: {key} = {file.filename}")
+
+            return data
+        except json.JSONDecodeError as e:
+            logger.warning(f"⚠️ AccessControllerEvent JSON parse xatolik: {e}")
+
+    # ==========================================
+    # 3-USUL: multipart/form-data (har qanday kalit)
+    # Universal fallback - birinchi JSON qiymatni olish
+    # ==========================================
+    if request_obj.form:
+        for key, value in request_obj.form.items():
+            try:
+                logger.info(f"📦 FORMAT: multipart/form-data (kalit: {key})")
+                data = json.loads(value)
+                logger.info(f"✅ {key} dan JSON muvaffaqiyatli parsed")
+
+                # Rasm fayli bormi?
+                if request_obj.files:
+                    for fkey, file in request_obj.files.items():
+                        logger.info(f"📸 Rasm: {fkey} = {file.filename}")
+
+                return data
+            except json.JSONDecodeError:
+                continue  # Keyingi kalitni sinab ko'rish
+
+    # ==========================================
+    # 4-USUL: raw JSON body (ESKI LOGIKA)
     # ==========================================
     try:
         raw_data = request_obj.get_data().decode('utf-8', errors='ignore')
@@ -70,7 +110,7 @@ def extract_terminal_data(request_obj):
                 return data
     except Exception as e:
         logger.error(f"❌ raw data parse xatolik: {e}")
-    
+
     return None
 
 
@@ -121,7 +161,7 @@ def parse_hikvision_datetime(date_string):
 def terminal_checkin_with_branch(company_id, branch_id):
     """
     KIRISH TERMINALI - Faqat kirish uchun
-    
+
     Qo'llab-quvvatlanadigan formatlar:
     1. multipart/form-data (event_log) - YANGI
     2. raw JSON body - MAVJUD
@@ -139,7 +179,7 @@ def terminal_checkin_with_branch(company_id, branch_id):
         # POLIMORFIK DATA EXTRACTION
         # ==========================================
         data = extract_terminal_data(request)
-        
+
         if not data:
             logger.warning("⚠️ No JSON found in request")
             return "OK", 200
@@ -341,7 +381,7 @@ def terminal_checkin_with_branch(company_id, branch_id):
 def terminal_checkout_with_branch(company_id, branch_id):
     """
     CHIQISH TERMINALI - Faqat chiqish uchun
-    
+
     Qo'llab-quvvatlanadigan formatlar:
     1. multipart/form-data (event_log) - YANGI
     2. raw JSON body - MAVJUD
@@ -359,7 +399,7 @@ def terminal_checkout_with_branch(company_id, branch_id):
         # POLIMORFIK DATA EXTRACTION
         # ==========================================
         data = extract_terminal_data(request)
-        
+
         if not data:
             logger.warning("⚠️ No JSON found in request")
             return "OK", 200
@@ -551,6 +591,7 @@ def terminal_checkout_with_branch(company_id, branch_id):
             except:
                 pass
         return "OK", 200
+
 
 @terminal_bp.route('/test', methods=['GET'])
 def test_terminal():
