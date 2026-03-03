@@ -325,6 +325,10 @@
     color: #64748b;
 }
 
+.stat-card {
+    transition: all 0.2s ease;
+}
+
 .tab-button.active {
     background: #2563eb;
     color: white;
@@ -375,7 +379,8 @@
 
 {% block extra_js %}
 <script>
-let attendanceLogs = [];
+let attendanceLogs = [];       // Jadvalda ko'rsatiladigan (filtrlangan) ma'lumotlar
+let fullAttendanceLogs = [];   // API dan kelgan to'liq ma'lumotlar (statistika uchun)
 let employees = [];
 let allEmployees = [];
 let branches = [];
@@ -393,7 +398,7 @@ let selectedEmployeeForAction = null;
 const MONTHLY_REST_LIMIT = 2;
 const MONTHLY_SICK_LIMIT = 20;
 
-// Load attendance
+// Load attendance - API dan ma'lumot oladi (statusFilter ta'sir qilmaydi)
 async function loadAttendance() {
     showLoading();
 
@@ -401,9 +406,8 @@ async function loadAttendance() {
         const date = document.getElementById('selectedDate').value;
         const branchId = document.getElementById('branchFilter').value;
         const departmentId = document.getElementById('departmentFilter').value;
-        const status = document.getElementById('statusFilter').value;
 
-        console.log('🔍 Filters:', { date, branchId, departmentId, status });
+        console.log('🔍 Filters:', { date, branchId, departmentId });
 
         const filters = {
             start_date: date,
@@ -436,53 +440,14 @@ async function loadAttendance() {
 
         console.log(`✅ Loaded ${employeesData.length} attendance records`);
 
-        attendanceLogs = employeesData;
+        // To'liq ma'lumotlarni saqlash (statistika uchun - o'zgarmaydi)
+        fullAttendanceLogs = employeesData;
 
-        // Filter by status
-        if (status === 'present') {
-            attendanceLogs = attendanceLogs.filter(a => a.check_in_time);
-        } else if (status === 'late') {
-            attendanceLogs = attendanceLogs.filter(a => a.late_minutes > 0);
-        } else if (status === 'absent') {
-            // Get all employees filtered by branch and department
-            let filteredEmployees = [...allEmployees];
-
-            // Apply branch filter
-            if (branchId) {
-                filteredEmployees = filteredEmployees.filter(e => e.branch_id === branchId);
-            }
-
-            // Apply department filter
-            if (departmentId) {
-                filteredEmployees = filteredEmployees.filter(e => e.department_id === departmentId);
-            }
-
-            console.log(`📋 Filtered employees count: ${filteredEmployees.length}`);
-
-            // Find who's absent from filtered employees
-            const presentIds = attendanceLogs.map(a => a.employee_id);
-            const absentEmployees = filteredEmployees.filter(e => !presentIds.includes(e.id));
-
-            console.log(`📊 Absent filter: ${absentEmployees.length} xodim kelmagan`);
-
-            // ONLY show absent employees (not present ones)
-            attendanceLogs = absentEmployees.map(e => ({
-                employee_id: e.id,
-                employee_name: e.full_name,
-                employee_no: e.employee_no,
-                branch_name: e.branch_name,
-                department_name: e.department_name,
-                branch_id: e.branch_id,
-                department_id: e.department_id,
-                date: date,
-                check_in_time: null,
-                check_out_time: null,
-                is_absent: true
-            }));
-        }
-
-        renderAttendanceTable();
+        // Statistikani to'liq ma'lumotlar asosida hisoblash
         updateStats();
+
+        // Status filter bo'yicha jadval uchun filtrlash
+        applyStatusFilter();
 
     } catch (error) {
         console.error('Error loading attendance:', error);
@@ -490,6 +455,57 @@ async function loadAttendance() {
     } finally {
         hideLoading();
     }
+}
+
+// Status bo'yicha faqat jadvalni filtrlash (statistikaga ta'sir qilmaydi)
+function applyStatusFilter() {
+    const date = document.getElementById('selectedDate').value;
+    const branchId = document.getElementById('branchFilter').value;
+    const departmentId = document.getElementById('departmentFilter').value;
+    const status = document.getElementById('statusFilter').value;
+
+    if (status === 'present') {
+        attendanceLogs = fullAttendanceLogs.filter(a => a.check_in_time);
+    } else if (status === 'late') {
+        attendanceLogs = fullAttendanceLogs.filter(a => a.late_minutes > 0);
+    } else if (status === 'absent') {
+        // Get all employees filtered by branch and department
+        let filteredEmployees = [...allEmployees];
+
+        if (branchId) {
+            filteredEmployees = filteredEmployees.filter(e => e.branch_id === branchId);
+        }
+        if (departmentId) {
+            filteredEmployees = filteredEmployees.filter(e => e.department_id === departmentId);
+        }
+
+        console.log(`📋 Filtered employees count: ${filteredEmployees.length}`);
+
+        // Find who's absent from filtered employees
+        const presentIds = fullAttendanceLogs.map(a => a.employee_id);
+        const absentEmployees = filteredEmployees.filter(e => !presentIds.includes(e.id));
+
+        console.log(`📊 Absent filter: ${absentEmployees.length} xodim kelmagan`);
+
+        attendanceLogs = absentEmployees.map(e => ({
+            employee_id: e.id,
+            employee_name: e.full_name,
+            employee_no: e.employee_no,
+            branch_name: e.branch_name,
+            department_name: e.department_name,
+            branch_id: e.branch_id,
+            department_id: e.department_id,
+            date: date,
+            check_in_time: null,
+            check_out_time: null,
+            is_absent: true
+        }));
+    } else {
+        // Barchasi - to'liq ro'yxat
+        attendanceLogs = [...fullAttendanceLogs];
+    }
+
+    renderAttendanceTable();
 }
 
 // Load all employees
@@ -641,14 +657,16 @@ function updateStats() {
     }
 
     const total = filteredEmployees.length;  // ✅ Filter qilingan
-    const present = attendanceLogs.filter(a => !a.is_absent).length;
-    const late = attendanceLogs.filter(a => a.late_minutes > 0).length;
+
+    // ✅ Doim to'liq (status bo'yicha filtrlanmagan) ma'lumotlardan hisoblash
+    const present = fullAttendanceLogs.filter(a => !a.is_absent).length;
+    const late = fullAttendanceLogs.filter(a => a.late_minutes > 0).length;
     const absent = total - present;
 
-    const totalWorkMinutes = attendanceLogs.reduce((sum, a) => sum + (a.total_work_minutes || 0), 0);
+    const totalWorkMinutes = fullAttendanceLogs.reduce((sum, a) => sum + (a.total_work_minutes || 0), 0);
     const totalWorkHours = Math.floor(totalWorkMinutes / 60);
 
-    const totalLateMinutes = attendanceLogs.reduce((sum, a) => sum + (a.late_minutes || 0), 0);
+    const totalLateMinutes = fullAttendanceLogs.reduce((sum, a) => sum + (a.late_minutes || 0), 0);
     const avgLate = late > 0 ? Math.round(totalLateMinutes / late) : 0;
 
     const presentPercent = total > 0 ? Math.round((present / total) * 100) : 0;
@@ -663,10 +681,23 @@ function updateStats() {
 }
 
 
-// Filter by clicking on stat cards
+// Filter by clicking on stat cards - faqat jadvalni filtrlaydi, statistikaga ta'sir qilmaydi
 function filterByStatus(status) {
     document.getElementById('statusFilter').value = status;
-    loadAttendance();
+
+    // Faol kartochkani ajratib ko'rsatish
+    document.querySelectorAll('.stat-card').forEach(card => {
+        card.classList.remove('ring-4', 'ring-white', 'ring-opacity-60', 'scale-105');
+    });
+    if (status) {
+        const statusIndex = { 'present': 1, 'late': 2, 'absent': 3 };
+        const cards = document.querySelectorAll('.stat-card');
+        if (statusIndex[status] !== undefined && cards[statusIndex[status]]) {
+            cards[statusIndex[status]].classList.add('ring-4', 'ring-white', 'ring-opacity-60', 'scale-105');
+        }
+    }
+
+    applyStatusFilter();
 }
 
 
@@ -1304,7 +1335,7 @@ function exportAttendance() {
 document.getElementById('selectedDate').addEventListener('change', loadAttendance);
 document.getElementById('branchFilter').addEventListener('change', loadAttendance);
 document.getElementById('departmentFilter').addEventListener('change', loadAttendance);
-document.getElementById('statusFilter').addEventListener('change', loadAttendance);
+document.getElementById('statusFilter').addEventListener('change', applyStatusFilter);
 document.getElementById('calendarEmployee').addEventListener('change', loadCalendar);
 
 // Initialize

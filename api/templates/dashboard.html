@@ -243,7 +243,7 @@ async function loadDashboardData() {
 
         // Load tables
         loadRecentCheckins(todayAttendance);
-        loadTopPerformers(employees);
+        await loadTopPerformers(employees, startDate, endDate);
 
         // Load department stats - need to pass today for filtering
         await loadDepartmentStats(departments, employees, today, startDate, endDate);
@@ -496,38 +496,75 @@ function loadRecentCheckins(attendanceList) {
     console.log('✅ Recent checkins loaded:', recent.length);
 }
 
-function loadTopPerformers(employees) {
-    console.log('🏆 Loading top performers...', employees.length);
+async function loadTopPerformers(employees, startDate, endDate) {
+    console.log('🏆 Loading top performers...', { startDate, endDate });
 
     const container = document.getElementById('topPerformers');
 
-    // Filter active employees and take first 5
-    const activeEmployees = employees.filter(e => e.status === 'active');
-    const top5 = activeEmployees.slice(0, 5);
+    try {
+        // Backend'dan haqiqiy reyting olish
+        const rankingData = await API.salary.getAttendanceRanking({
+            start_date: startDate,
+            end_date: endDate,
+            limit: 5
+        });
 
-    if (top5.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-sm text-center">Ma\'lumot yo\'q</p>';
-        return;
+        const ranking = rankingData.ranking || rankingData || [];
+        console.log('📊 Ranking data:', ranking);
+
+        if (ranking.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-sm text-center">Bu oy uchun davomat ma\'lumoti yo\'q</p>';
+            return;
+        }
+
+        container.innerHTML = ranking.map((emp, idx) => {
+            const rate = emp.attendance_rate || 0;
+
+            // Rang aniqlash
+            let rateColorClass, bgColor;
+            if (rate >= 90) {
+                rateColorClass = 'text-green-600';
+                bgColor = 'bg-green-50';
+            } else if (rate >= 70) {
+                rateColorClass = 'text-blue-600';
+                bgColor = 'bg-blue-50';
+            } else {
+                rateColorClass = 'text-yellow-600';
+                bgColor = 'bg-yellow-50';
+            }
+
+            // Top 3 uchun maxsus ranglar
+            let rankBg;
+            if (idx === 0) rankBg = 'bg-yellow-400';
+            else if (idx === 1) rankBg = 'bg-gray-400';
+            else if (idx === 2) rankBg = 'bg-orange-400';
+            else rankBg = 'bg-blue-500';
+
+            return `
+                <div class="flex items-center justify-between p-3 ${bgColor} rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 ${rankBg} rounded-full flex items-center justify-center text-white font-bold text-sm">
+                            ${idx + 1}
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-800 text-sm">${emp.full_name || 'N/A'}</p>
+                            <p class="text-xs text-gray-500">${emp.position || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm ${rateColorClass} font-bold">${rate.toFixed(0)}%</p>
+                        <p class="text-xs text-gray-400">${emp.on_time_days || 0}/${emp.total_days || 0} kun</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        console.log('✅ Top performers loaded:', ranking.length);
+
+    } catch (error) {
+        console.error('❌ Error loading top performers:', error);
+        container.innerHTML = '<p class="text-gray-500 text-sm text-center">Reyting ma\'lumotlarini yuklashda xatolik</p>';
     }
-
-    container.innerHTML = top5.map((emp, idx) => `
-        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                    ${idx + 1}
-                </div>
-                <div>
-                    <p class="font-medium text-gray-800 text-sm">${emp.full_name || 'N/A'}</p>
-                    <p class="text-xs text-gray-500">${emp.position || 'N/A'}</p>
-                </div>
-            </div>
-            <div class="text-right">
-                <p class="text-xs text-green-600 font-medium">100%</p>
-            </div>
-        </div>
-    `).join('');
-
-    console.log('✅ Top performers loaded:', top5.length);
 }
 
 async function loadDepartmentStats(departments, employees, today, startDate, endDate) {

@@ -58,3 +58,69 @@
 2026-02-04 12:36:08,101 INFO: Super admin admin@attendance.com already exists [in /app/app.py:40]
 2026-02-04 12:36:08,108 INFO: Database initialized successfully [in /app/app.py:110]
 2026-02-04 12:36:08,129 INFO: Super admin admin@attendance.com already exists [in /app/app.py:40]
+2026-03-03 21:22:12,010 INFO: Davomat Tizimi startup [in /app/app.py:80]
+2026-03-03 21:22:12,058 INFO: Davomat Tizimi startup [in /app/app.py:80]
+2026-03-03 21:22:12,087 INFO: Davomat Tizimi startup [in /app/app.py:80]
+2026-03-03 21:22:12,123 INFO: Davomat Tizimi startup [in /app/app.py:80]
+2026-03-03 21:22:12,255 ERROR: Database initialization failed: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "pg_type_typname_nsp_index"
+DETAIL:  Key (typname, typnamespace)=(super_admins, 2200) already exists.
+
+[SQL: 
+CREATE TABLE super_admins (
+	id VARCHAR(36) NOT NULL, 
+	email VARCHAR(255) NOT NULL, 
+	password_hash VARCHAR(255) NOT NULL, 
+	full_name VARCHAR(255) NOT NULL, 
+	created_at TIMESTAMP WITH TIME ZONE, 
+	PRIMARY KEY (id), 
+	UNIQUE (email)
+)
+
+]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) [in /app/app.py:113]
+2026-03-03 21:22:12,255 ERROR: Database initialization failed: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "pg_type_typname_nsp_index"
+DETAIL:  Key (typname, typnamespace)=(super_admins, 2200) already exists.
+
+[SQL: 
+CREATE TABLE super_admins (
+	id VARCHAR(36) NOT NULL, 
+	email VARCHAR(255) NOT NULL, 
+	password_hash VARCHAR(255) NOT NULL, 
+	full_name VARCHAR(255) NOT NULL, 
+	created_at TIMESTAMP WITH TIME ZONE, 
+	PRIMARY KEY (id), 
+	UNIQUE (email)
+)
+
+]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) [in /app/app.py:113]
+2026-03-03 21:22:12,255 ERROR: Database initialization failed: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "pg_type_typname_nsp_index"
+DETAIL:  Key (typname, typnamespace)=(super_admins, 2200) already exists.
+
+[SQL: 
+CREATE TABLE super_admins (
+	id VARCHAR(36) NOT NULL, 
+	email VARCHAR(255) NOT NULL, 
+	password_hash VARCHAR(255) NOT NULL, 
+	full_name VARCHAR(255) NOT NULL, 
+	created_at TIMESTAMP WITH TIME ZONE, 
+	PRIMARY KEY (id), 
+	UNIQUE (email)
+)
+
+]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) [in /app/app.py:113]
+2026-03-03 21:22:12,267 INFO: Database initialized successfully [in /app/app.py:110]
+2026-03-03 21:22:12,460 INFO: Super admin admin@attendance.com created successfully [in /app/app.py:52]
+2026-03-03 21:38:57,302 INFO: Davomat Tizimi startup [in /app/app.py:80]
+2026-03-03 21:38:57,302 INFO: Davomat Tizimi startup [in /app/app.py:80]
+2026-03-03 21:38:57,302 INFO: Davomat Tizimi startup [in /app/app.py:80]
+2026-03-03 21:38:57,318 INFO: Davomat Tizimi startup [in /app/app.py:80]
+2026-03-03 21:38:57,349 INFO: Database initialized successfully [in /app/app.py:110]
+2026-03-03 21:38:57,353 INFO: Database initialized successfully [in /app/app.py:110]
+2026-03-03 21:38:57,355 INFO: Database initialized successfully [in /app/app.py:110]
+2026-03-03 21:38:57,357 INFO: Database initialized successfully [in /app/app.py:110]
+2026-03-03 21:38:57,369 INFO: Super admin admin@attendance.com already exists [in /app/app.py:40]
+2026-03-03 21:38:57,372 INFO: Super admin admin@attendance.com already exists [in /app/app.py:40]
+2026-03-03 21:38:57,375 INFO: Super admin admin@attendance.com already exists [in /app/app.py:40]
+2026-03-03 21:38:57,377 INFO: Super admin admin@attendance.com already exists [in /app/app.py:40]
