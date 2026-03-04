@@ -605,6 +605,7 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings, 
 
             # Work details
             'total_work_hours': total_work_hours,
+            'total_work_minutes': total_work_minutes,
 
             # Penalties breakdown
             'late_minutes': total_late_minutes,
@@ -1572,6 +1573,7 @@ def export_salary_excel():
         totals = {
             'base_salary': 0,
             'calculated_salary': 0,
+            'total_work_minutes': 0,
             'late_penalty': 0,
             'early_leave_penalty': 0,
             'absence_penalty': 0,
@@ -1593,6 +1595,7 @@ def export_salary_excel():
                 'daily_rate': salary['daily_rate'],
                 'worked_days': salary['worked_days'],
                 'expected_days': salary['expected_days'],
+                'total_work_minutes': salary.get('total_work_minutes', 0),
                 'late_minutes': salary['late_minutes'],
                 'late_penalty': salary['auto_late_penalty'],
                 'early_leave_minutes': salary.get('early_leave_minutes', 0),
@@ -1611,6 +1614,7 @@ def export_salary_excel():
             # Update totals
             totals['base_salary'] += salary['base_salary']
             totals['calculated_salary'] += salary['calculated_salary']
+            totals['total_work_minutes'] += salary.get('total_work_minutes', 0)
             totals['late_penalty'] += salary['auto_late_penalty']
             totals['early_leave_penalty'] += salary.get('early_leave_penalty', 0)
             totals['absence_penalty'] += salary['absence_penalty']
@@ -1670,18 +1674,19 @@ def export_salary_excel():
         })
 
         # Title
-        ws_salary.merge_range('A1:P1', f'OYLIK HISOBOT: {start_date_str} - {end_date_str}', title_fmt)
+        ws_salary.merge_range('A1:R1', f'OYLIK HISOBOT: {start_date_str} - {end_date_str}', title_fmt)
         ws_salary.set_row(0, 30)
 
         # Headers
         headers = [
             '№', 'Xodim', 'ID', 'Filial', 'Lavozim',
             'Asosiy\noylik', 'Kunlik\nstavka', 'Ishlangan\nkun', 'Kutilgan\nkun',
+            'Ish vaqti\n(daq)', 'Ish vaqti\n(soat)',
             'Kechikish\n(daq)', 'Kechikish\njarimasi',
             'Erta ketish\n(daq)', 'Erta ketish\njarimasi',
             'Jami\njarima', 'Bonus', 'Yakuniy\noylik'
         ]
-        widths = [4, 25, 10, 15, 15, 15, 12, 10, 10, 10, 12, 10, 12, 12, 12, 15]
+        widths = [4, 25, 10, 15, 15, 15, 12, 10, 10, 12, 12, 10, 12, 10, 12, 12, 12, 15]
 
         for col, width in enumerate(widths):
             ws_salary.set_column(col, col, width)
@@ -1693,6 +1698,9 @@ def export_salary_excel():
         # Data rows
         for row, emp in enumerate(salary_data, start=3):
             ws_salary.set_row(row, 22)
+            total_mins = emp['total_work_minutes']
+            work_hours_str = f"{int(total_mins // 60)} soat {int(total_mins % 60)} daq"
+
             ws_salary.write(row, 0, row - 2, cell_center)
             ws_salary.write(row, 1, emp['full_name'], cell_fmt)
             ws_salary.write(row, 2, emp['employee_no'], cell_center)
@@ -1702,30 +1710,37 @@ def export_salary_excel():
             ws_salary.write(row, 6, emp['daily_rate'], money_fmt)
             ws_salary.write(row, 7, emp['worked_days'], cell_center)
             ws_salary.write(row, 8, emp['expected_days'], cell_center)
-            ws_salary.write(row, 9, emp['late_minutes'], cell_center)
-            ws_salary.write(row, 10, emp['late_penalty'], penalty_fmt if emp['late_penalty'] > 0 else money_fmt)
-            ws_salary.write(row, 11, emp['early_leave_minutes'], cell_center)
-            ws_salary.write(row, 12, emp['early_leave_penalty'],
+            ws_salary.write(row, 9, total_mins, cell_center)
+            ws_salary.write(row, 10, work_hours_str, cell_center)
+            ws_salary.write(row, 11, emp['late_minutes'], cell_center)
+            ws_salary.write(row, 12, emp['late_penalty'], penalty_fmt if emp['late_penalty'] > 0 else money_fmt)
+            ws_salary.write(row, 13, emp['early_leave_minutes'], cell_center)
+            ws_salary.write(row, 14, emp['early_leave_penalty'],
                             penalty_fmt if emp['early_leave_penalty'] > 0 else money_fmt)
-            ws_salary.write(row, 13, emp['total_penalty'], penalty_fmt if emp['total_penalty'] > 0 else money_fmt)
-            ws_salary.write(row, 14, emp['bonus'], bonus_fmt if emp['bonus'] > 0 else money_fmt)
-            ws_salary.write(row, 15, emp['final_salary'], money_fmt)
+            ws_salary.write(row, 15, emp['total_penalty'], penalty_fmt if emp['total_penalty'] > 0 else money_fmt)
+            ws_salary.write(row, 16, emp['bonus'], bonus_fmt if emp['bonus'] > 0 else money_fmt)
+            ws_salary.write(row, 17, emp['final_salary'], money_fmt)
 
         # Totals row
         total_row = len(salary_data) + 3
         ws_salary.set_row(total_row, 25)
+        total_mins_all = totals['total_work_minutes']
+        total_hours_str = f"{int(total_mins_all // 60)} soat {int(total_mins_all % 60)} daq"
+
         ws_salary.merge_range(total_row, 0, total_row, 4, 'JAMI:', total_label_fmt)
         ws_salary.write(total_row, 5, totals['base_salary'], total_fmt)
         ws_salary.write(total_row, 6, '', total_fmt)
         ws_salary.write(total_row, 7, '', total_fmt)
         ws_salary.write(total_row, 8, '', total_fmt)
-        ws_salary.write(total_row, 9, '', total_fmt)
-        ws_salary.write(total_row, 10, totals['late_penalty'], total_fmt)
+        ws_salary.write(total_row, 9, totals['total_work_minutes'], total_fmt)
+        ws_salary.write(total_row, 10, total_hours_str, total_label_fmt)
         ws_salary.write(total_row, 11, '', total_fmt)
-        ws_salary.write(total_row, 12, totals['early_leave_penalty'], total_fmt)
-        ws_salary.write(total_row, 13, totals['total_penalty'], total_fmt)
-        ws_salary.write(total_row, 14, totals['bonus'], total_fmt)
-        ws_salary.write(total_row, 15, totals['final_salary'], total_fmt)
+        ws_salary.write(total_row, 12, totals['late_penalty'], total_fmt)
+        ws_salary.write(total_row, 13, '', total_fmt)
+        ws_salary.write(total_row, 14, totals['early_leave_penalty'], total_fmt)
+        ws_salary.write(total_row, 15, totals['total_penalty'], total_fmt)
+        ws_salary.write(total_row, 16, totals['bonus'], total_fmt)
+        ws_salary.write(total_row, 17, totals['final_salary'], total_fmt)
 
         # ==========================================
         # SHEET 2: ERTA KETISH TAFSILOTLARI
@@ -1788,6 +1803,7 @@ def export_salary_excel():
         summary_data = [
             ('Jami xodimlar soni', len(salary_data)),
             ('Jami asosiy oylik', totals['base_salary']),
+            ('Jami ish vaqti (daqiqa)', totals['total_work_minutes']),
             ('Jami kechikish jarimasi', totals['late_penalty']),
             ('Jami erta ketish jarimasi', totals['early_leave_penalty']),
             ('Jami kelmaslik jarimasi', totals['absence_penalty']),
