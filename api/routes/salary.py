@@ -398,6 +398,45 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings, 
 
         total_bonus_amount = sum(b.amount for b in bonuses)
 
+        # ==========================================
+        # YANGI: Ortiqcha ish vaqti (overtime) bonusi avtomatik hisoblash
+        # ==========================================
+        overtime_bonus_amount = 0.0
+        overtime_bonus_details = []
+
+        overtime_bonus_enabled = getattr(settings, 'overtime_bonus_enabled', False)
+        overtime_bonus_per_minute = float(getattr(settings, 'overtime_bonus_per_minute', 0.0))
+        overtime_min_minutes = int(getattr(settings, 'overtime_min_minutes', 30))
+
+        if overtime_bonus_enabled and overtime_bonus_per_minute > 0:
+            # Attendance log lardan overtime_minutes ni yig'amiz
+            from database import AttendanceLog as AttLog
+            overtime_logs = db.query(AttLog).filter(
+                AttLog.employee_id == employee.id,
+                AttLog.date >= start_date,
+                AttLog.date <= end_date,
+                AttLog.overtime_minutes > overtime_min_minutes
+            ).all()
+
+            for ot_log in overtime_logs:
+                ot_mins = ot_log.overtime_minutes or 0
+                if ot_mins > overtime_min_minutes:
+                    eligible_mins = ot_mins - overtime_min_minutes
+                    day_bonus = eligible_mins * overtime_bonus_per_minute
+                    overtime_bonus_amount += day_bonus
+                    overtime_bonus_details.append({
+                        'date': ot_log.date.isoformat(),
+                        'overtime_minutes': ot_mins,
+                        'eligible_minutes': eligible_mins,
+                        'rate_per_minute': overtime_bonus_per_minute,
+                        'bonus_amount': round(day_bonus, 2),
+                    })
+
+            if overtime_bonus_amount > 0:
+                logger.info(f"⏱️ OVERTIME BONUS: {len(overtime_bonus_details)} kun, jami {overtime_bonus_amount:,.0f} so'm")
+
+        total_bonus_amount += overtime_bonus_amount
+
         # === PROFESSIONAL MONTHLY CALCULATION ===
         if salary_type == 'monthly':
             # STEP 1: Calculate DAILY RATE based on FULL MONTH

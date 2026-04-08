@@ -4,62 +4,74 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="43a4ad98-27c3-4ff2-9d39-8c3b72efcdd0" name="Changes" comment="">
+    <list default="true" id="60cf24de-d42b-472a-bf0e-599e88292251" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/api/routes/work_schedule_overrides.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/api/templates/overrides.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/face_id.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/face_id.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/api/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/api/database.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/exports/attendance_report_e7fba3ce-beae-48b1-a2b2-3075c24250d2_2025_12_20251229110120.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/exports/attendance_report_e7fba3ce-beae-48b1-a2b2-3075c24250d2_2025_12_20251229114852.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/exports/attendance_report_e7fba3ce-beae-48b1-a2b2-3075c24250d2_2025_12_20251230215943.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/logs/app.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/api/routes/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/api/routes/salary.py" beforeDir="false" afterPath="$PROJECT_DIR$/api/routes/salary.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/routes/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/api/routes/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/services/attendance_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/api/services/attendance_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/static/uploads/logos/be24c658-75db-4660-b63d-9288278cc26a_146ac49d.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/static/uploads/logos/c026fc98-27bb-45d0-813b-1f6157305ece_6b054e09.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/api/templates/base.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/templates/settings.html" beforeDir="false" afterPath="$PROJECT_DIR$/api/templates/settings.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/uploads/logos/photo_2025-10-08_18-31-03_c3966c63.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/uploads/logos/photo_2025-12-12_12-00-02_e89e037a.jpg" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="FileTemplateManagerImpl">
-    <option name="RECENT_TEMPLATES">
-      <list>
-        <option value="HTML File" />
-        <option value="Python Script" />
-      </list>
-    </option>
-  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory">{
-  &quot;lastFilter&quot;: {
-    &quot;state&quot;: &quot;OPEN&quot;,
-    &quot;assignee&quot;: &quot;saideey&quot;
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "saideey"
   }
-}</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/saideey/faceid.git&quot;,
-    &quot;accountId&quot;: &quot;59450850-639c-480f-9048-f6d7d1f69520&quot;
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/saideey/faceid.git",
+    "accountId": "59450850-639c-480f-9048-f6d7d1f69520"
   }
-}</component>
-  <component name="ProjectColorInfo">{
-  &quot;associatedIndex&quot;: 4
-}</component>
-  <component name="ProjectId" id="37TJlPx1eMNLinBebvmFhrYAuaz" />
+}]]></component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 4
+}]]></component>
+  <component name="ProjectId" id="3C57xDPwfb03vwxgiVII77MpYZE" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/i.saidov/PycharmProjects/face_id/api/routes&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "C:/Users/i.saidov/PycharmProjects/face_id",
+    "to.speed.mode.migration.done": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\Users\i.saidov\PycharmProjects\face_id\api\routes" />
       <recent name="C:\Users\i.saidov\PycharmProjects\face_id" />
     </key>
   </component>
@@ -72,11 +84,11 @@
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="43a4ad98-27c3-4ff2-9d39-8c3b72efcdd0" name="Changes" comment="" />
-      <created>1766921277313</created>
+      <changelist id="60cf24de-d42b-472a-bf0e-599e88292251" name="Changes" comment="" />
+      <created>1775663821874</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1766921277313</updated>
+      <updated>1775663821874</updated>
     </task>
     <servers />
   </component>

@@ -171,6 +171,92 @@
         </div>
     </div>
 
+    <!-- Overtime Bonus Settings -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-star text-green-500 mr-3"></i>
+            Ortiqcha ish vaqti bonusi
+        </h3>
+
+        <div class="mb-6">
+            <label class="flex items-center cursor-pointer select-none">
+                <div class="relative mr-3">
+                    <input type="checkbox" id="overtimeBonusEnabled" class="sr-only" onchange="toggleOvertimeBonusFields()">
+                    <div id="overtimeBonusToggleBg" class="w-12 h-6 bg-gray-300 rounded-full transition-colors duration-200"></div>
+                    <div id="overtimeBonusToggleDot" class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"></div>
+                </div>
+                <span class="text-gray-700 font-medium">Ortiqcha ish vaqti bonusini yoqish</span>
+            </label>
+            <p class="text-sm text-gray-500 ml-16 mt-1">Xodim belgilangan vaqtdan ko'p ishlasa, har daqiqasi uchun bonus hisoblanadi</p>
+        </div>
+
+        <div id="overtimeBonusFields" class="hidden">
+            <!-- Info banner -->
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-info-circle text-green-600 mt-0.5"></i>
+                    <div class="text-sm text-green-700">
+                        <strong>Qanday ishlaydi?</strong>
+                        Xodim ish kunini tugash vaqtidan keyin ham ishlaganida, ortiqcha vaqti hisoblanadi.
+                        Belgilangan chegara daqiqadan oshgan qismi uchun har daqiqaga bonus beriladi.
+                        Bu bonus oylik maosh hisoblaganda avtomatik qo'shiladi.
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-green-50 border border-green-200 rounded-lg p-5">
+                    <label class="form-label">
+                        <i class="fas fa-coins text-green-600 mr-1"></i>
+                        Bonus miqdori (so'm / daqiqa)
+                    </label>
+                    <div class="relative">
+                        <input type="number" id="overtimeBonusPerMinute" class="form-input pr-16"
+                               min="0" step="50" placeholder="300">
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">so'm/min</span>
+                    </div>
+                    <p class="text-xs text-green-600 mt-2">
+                        <i class="fas fa-calculator mr-1"></i>
+                        Misol: 300 so'm/daqiqa × 60 min = 18,000 so'm bonus
+                    </p>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-5">
+                    <label class="form-label">
+                        <i class="fas fa-clock text-blue-600 mr-1"></i>
+                        Minimum ortiqcha ish (daqiqa)
+                    </label>
+                    <div class="relative">
+                        <input type="number" id="overtimeMinMinutes" class="form-input pr-16"
+                               min="0" max="480" step="5" placeholder="30">
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">daqiqa</span>
+                    </div>
+                    <p class="text-xs text-blue-600 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Bu chegaragacha bonus berilmaydi. Faqat oshgan qismi hisoblanadi
+                    </p>
+                </div>
+            </div>
+
+            <!-- Live calculator -->
+            <div class="mt-5 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <p class="text-sm font-medium text-gray-600 mb-3">
+                    <i class="fas fa-calculator mr-1 text-gray-500"></i>
+                    Misol hisob-kitob:
+                </p>
+                <div class="flex flex-wrap gap-4 text-sm text-gray-600 items-center">
+                    <span>Xodim <strong class="text-blue-600">90 daqiqa</strong> ortiqcha ishladi</span>
+                    <i class="fas fa-arrow-right text-gray-400"></i>
+                    <span>Chegara: <strong id="calcMinDisplay" class="text-orange-500">30 daqiqa</strong></span>
+                    <i class="fas fa-arrow-right text-gray-400"></i>
+                    <span>Hisob: <strong id="calcEligibleDisplay" class="text-green-600">60 daqiqa</strong> × <strong id="calcRateDisplay" class="text-green-600">300 so'm</strong></span>
+                    <i class="fas fa-arrow-right text-gray-400"></i>
+                    <span class="text-lg font-bold text-green-600">= <span id="calcResultDisplay">18,000</span> so'm bonus</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Save Button -->
     <div class="flex items-center justify-end gap-3">
         <button onclick="loadSettings()" class="btn-secondary">
@@ -245,6 +331,13 @@ async function loadSettings() {
         document.getElementById('absencePenalty').value = data.absence_penalty_amount || 50000;
         document.getElementById('dailyWorkHours').value = data.daily_work_hours || 8;
 
+        // Ortiqcha ish vaqti bonusi
+        const overtimeBonusEnabled = data.overtime_bonus_enabled || false;
+        setOvertimeBonusToggle(overtimeBonusEnabled);
+        document.getElementById('overtimeBonusPerMinute').value = data.overtime_bonus_per_minute || 300;
+        document.getElementById('overtimeMinMinutes').value = data.overtime_min_minutes || 30;
+        updateOvertimeCalc();
+
     } catch (error) {
         console.error('Error loading settings:', error);
         showNotification('Sozlamalarni yuklashda xatolik', 'error');
@@ -272,7 +365,11 @@ async function saveSettings() {
             late_penalty_second: parseFloat(document.getElementById('latePenaltySecond').value) || 3000,
             late_penalty_third: parseFloat(document.getElementById('latePenaltyThird').value) || 5000,
             absence_penalty_amount: parseFloat(document.getElementById('absencePenalty').value),
-            daily_work_hours: parseInt(document.getElementById('dailyWorkHours').value) || 8
+            daily_work_hours: parseInt(document.getElementById('dailyWorkHours').value) || 8,
+            // Ortiqcha ish vaqti bonusi
+            overtime_bonus_enabled: document.getElementById('overtimeBonusEnabled').checked,
+            overtime_bonus_per_minute: parseFloat(document.getElementById('overtimeBonusPerMinute').value) || 0,
+            overtime_min_minutes: parseInt(document.getElementById('overtimeMinMinutes').value) || 30,
         };
 
         console.log('Saving settings:', data);
@@ -372,7 +469,49 @@ async function deleteLogo() {
     }
 }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', loadSettings);
+// Overtime bonus toggle
+function setOvertimeBonusToggle(enabled) {
+    const checkbox = document.getElementById('overtimeBonusEnabled');
+    const bg = document.getElementById('overtimeBonusToggleBg');
+    const dot = document.getElementById('overtimeBonusToggleDot');
+    checkbox.checked = enabled;
+    if (enabled) {
+        bg.classList.remove('bg-gray-300');
+        bg.classList.add('bg-green-500');
+        dot.style.transform = 'translateX(24px)';
+    } else {
+        bg.classList.add('bg-gray-300');
+        bg.classList.remove('bg-green-500');
+        dot.style.transform = 'translateX(0)';
+    }
+    document.getElementById('overtimeBonusFields').classList.toggle('hidden', !enabled);
+}
+
+function toggleOvertimeBonusFields() {
+    const enabled = document.getElementById('overtimeBonusEnabled').checked;
+    setOvertimeBonusToggle(enabled);
+}
+
+function updateOvertimeCalc() {
+    const rate = parseFloat(document.getElementById('overtimeBonusPerMinute').value) || 0;
+    const minMins = parseInt(document.getElementById('overtimeMinMinutes').value) || 30;
+    const exampleOvertime = 90;
+    const eligible = Math.max(0, exampleOvertime - minMins);
+    const result = eligible * rate;
+
+    document.getElementById('calcMinDisplay').textContent = minMins + ' daqiqa';
+    document.getElementById('calcEligibleDisplay').textContent = eligible + ' daqiqa';
+    document.getElementById('calcRateDisplay').textContent = rate.toLocaleString('uz-UZ') + ' so\'m';
+    document.getElementById('calcResultDisplay').textContent = result.toLocaleString('uz-UZ');
+}
+
+// Live calculator update on input change
+document.addEventListener('DOMContentLoaded', function() {
+    loadSettings();
+    ['overtimeBonusPerMinute', 'overtimeMinMinutes'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateOvertimeCalc);
+    });
+});
 </script>
 {% endblock %}

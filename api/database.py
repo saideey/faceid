@@ -96,6 +96,8 @@ class Company(Base):
     penalties = relationship("Penalty", back_populates="company")
     bonuses = relationship("Bonus", back_populates="company")
     employee_leaves = relationship("EmployeeLeave", back_populates="company")  # YANGI
+    work_time_overrides = relationship("WorkTimeOverride", back_populates="company", cascade="all, delete-orphan")
+    special_day_offs = relationship("SpecialDayOff", back_populates="company", cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -180,6 +182,16 @@ class CompanySettings(Base):
     # Kunlik ish soatlari (default 8 soat = 480 daqiqa)
     daily_work_hours = Column(Integer, default=8)
 
+    # ==========================================
+    # YANGI: Ortiqcha ish vaqti bonusi
+    # ==========================================
+    # Overtime bonus yoqilgan/o'chirilgan
+    overtime_bonus_enabled = Column(Boolean, default=False)
+    # 1 daqiqa ortiqcha ish uchun bonus (so'm)
+    overtime_bonus_per_minute = Column(Float, default=0.0)
+    # Minimum overtime (bu chegaragacha bonus yo'q)
+    overtime_min_minutes = Column(Integer, default=30)
+
     currency = Column(String(10), default='UZS')
 
     created_at = Column(DateTime(timezone=True), default=get_tashkent_time)
@@ -207,6 +219,10 @@ class CompanySettings(Base):
             # YANGI: Erta ketish jarima sozlamalari
             'early_leave_penalty_enabled': self.early_leave_penalty_enabled,
             'daily_work_hours': self.daily_work_hours,
+            # YANGI: Ortiqcha ish vaqti bonusi
+            'overtime_bonus_enabled': getattr(self, 'overtime_bonus_enabled', False),
+            'overtime_bonus_per_minute': getattr(self, 'overtime_bonus_per_minute', 0.0),
+            'overtime_min_minutes': getattr(self, 'overtime_min_minutes', 30),
             'default_work_start': str(self.default_work_start) if self.default_work_start else None,
             'default_work_end': str(self.default_work_end) if self.default_work_end else None,
             'grace_period_minutes': self.grace_period_minutes,
@@ -242,6 +258,8 @@ class Branch(Base):
     company = relationship("Company", back_populates="branches")
     employees = relationship("Employee", back_populates="branch", cascade="all, delete-orphan")
     attendance_logs = relationship("AttendanceLog", back_populates="branch")
+    work_time_overrides = relationship("WorkTimeOverride", back_populates="branch")
+    special_day_offs = relationship("SpecialDayOff", back_populates="branch")
 
     def to_dict(self):
         return {
@@ -278,6 +296,8 @@ class Department(Base):
     # Relationships
     company = relationship("Company", back_populates="departments")
     employees = relationship("Employee", back_populates="department")
+    work_time_overrides = relationship("WorkTimeOverride", back_populates="department")
+    special_day_offs = relationship("SpecialDayOff", back_populates="department")
 
     def to_dict(self):
         return {
@@ -342,6 +362,8 @@ class Employee(Base):
     bonuses = relationship("Bonus", back_populates="employee", cascade="all, delete-orphan")
     schedules = relationship("EmployeeSchedule", back_populates="employee", cascade="all, delete-orphan")
     leaves = relationship("EmployeeLeave", back_populates="employee", cascade="all, delete-orphan")  # YANGI
+    work_time_overrides = relationship("WorkTimeOverride", back_populates="employee", foreign_keys="WorkTimeOverride.employee_id", cascade="all, delete-orphan")
+    special_day_offs = relationship("SpecialDayOff", back_populates="employee", foreign_keys="SpecialDayOff.employee_id", cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -647,6 +669,189 @@ class Bonus(Base):
 
 
 # ========================================
+# YANGI: Work Time Override Model
+# Vaqt oralig'ida ish vaqtini o'zgartirish
+# ========================================
+
+class WorkTimeOverride(Base):
+    """
+    Vaqt oralig'ida ish vaqtini o'zgartirish modeli.
+
+    Misol: Ramazon oyida mart 1-31 gacha barcha xodimlar 17:00 da ketadi.
+    Yoki fevralda 9:00 da kelish kerak.
+
+    Qo'llanish tartibi (ustuvorlik):
+    1. employee_id bo'lsa - faqat shu xodimga
+    2. department_id bo'lsa - shu bo'lim barcha xodimlariga
+    3. branch_id bo'lsa - shu filial barcha xodimlariga
+    4. Uchala ham null bo'lsa - kompaniyaning barcha xodimlariga
+    """
+    __tablename__ = 'work_time_overrides'
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    company_id = Column(String(36), ForeignKey('companies.id'), nullable=False)
+
+    # Qo'llanish doirasi (barchasi null = kompaniya darajasi)
+    employee_id = Column(String(36), ForeignKey('employees.id'), nullable=True)
+    department_id = Column(String(36), ForeignKey('departments.id'), nullable=True)
+    branch_id = Column(String(36), ForeignKey('branches.id'), nullable=True)
+
+    # Sana oralig'i
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+
+    # O'zgartirilgan vaqtlar (None bo'lsa o'zgartirilmaydi)
+    work_start_time = Column(Time, nullable=True)   # Yangi kelish vaqti
+    work_end_time = Column(Time, nullable=True)      # Yangi ketish vaqti
+
+    # Sabab va izoh
+    title = Column(String(255), nullable=False)      # "Ramazon oyi", "Qish vaqti" va h.k.
+    reason = Column(Text, nullable=True)
+
+    # Kim yaratdi
+    created_by = Column(String(36), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=get_tashkent_time)
+    updated_at = Column(DateTime(timezone=True), default=get_tashkent_time, onupdate=get_tashkent_time)
+
+    is_active = Column(Boolean, default=True)
+
+    __table_args__ = (
+        Index('idx_wto_company_dates', 'company_id', 'start_date', 'end_date'),
+        Index('idx_wto_employee', 'employee_id'),
+        Index('idx_wto_department', 'department_id'),
+        Index('idx_wto_branch', 'branch_id'),
+    )
+
+    # Relationships
+    company = relationship("Company", back_populates="work_time_overrides")
+    employee = relationship("Employee", back_populates="work_time_overrides", foreign_keys=[employee_id])
+    department = relationship("Department", back_populates="work_time_overrides")
+    branch = relationship("Branch", back_populates="work_time_overrides")
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'company_id': self.company_id,
+            'employee_id': self.employee_id,
+            'employee_name': self.employee.full_name if self.employee else None,
+            'department_id': self.department_id,
+            'department_name': self.department.name if self.department else None,
+            'branch_id': self.branch_id,
+            'branch_name': self.branch.name if self.branch else None,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'work_start_time': str(self.work_start_time) if self.work_start_time else None,
+            'work_end_time': str(self.work_end_time) if self.work_end_time else None,
+            'title': self.title,
+            'reason': self.reason,
+            'is_active': self.is_active,
+            'scope': (
+                'employee' if self.employee_id else
+                'department' if self.department_id else
+                'branch' if self.branch_id else
+                'company'
+            ),
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# ========================================
+# YANGI: Special Day Off Event Model
+# To'y, bayram, maxsus dam olish kunlari
+# ========================================
+
+class SpecialDayOff(Base):
+    """
+    Maxsus dam olish / erta ketish kunlari.
+
+    Misol:
+    - Xodimning to'yi: bir kunga dam olish
+    - Bayram kuni: butun kompaniya 15:00 da ketadi
+    - Hafta davomida ba'zi xodimlar dam oladi
+
+    event_type:
+    - 'day_off'     : Bu kun ish kuni hisoblanmaydi (ishga kelishi shart emas)
+    - 'early_leave' : Erta ketishga ruxsat (early_leave_minutes jarima qo'yilmaydi)
+    - 'late_start'  : Kech kelishga ruxsat (late_minutes jarima qo'yilmaydi)
+    """
+    __tablename__ = 'special_day_offs'
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    company_id = Column(String(36), ForeignKey('companies.id'), nullable=False)
+
+    # Qo'llanish doirasi (barchasi null = kompaniya darajasi)
+    employee_id = Column(String(36), ForeignKey('employees.id'), nullable=True)
+    department_id = Column(String(36), ForeignKey('departments.id'), nullable=True)
+    branch_id = Column(String(36), ForeignKey('branches.id'), nullable=True)
+
+    # Sana oralig'i
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+
+    # Turi
+    event_type = Column(String(50), nullable=False)  # 'day_off', 'early_leave', 'late_start'
+
+    # Erta ketish / kech kelish uchun maxsus vaqt (ixtiyoriy)
+    # Agar berilsa - shu vaqtdan keyin ketish/shu vaqtgacha kelish jarima hisoblanmaydi
+    override_start_time = Column(Time, nullable=True)  # late_start uchun: bu vaqtgacha kelish OK
+    override_end_time = Column(Time, nullable=True)    # early_leave uchun: bu vaqtdan keyin ketish OK
+
+    # Sarlavha va sabab
+    title = Column(String(255), nullable=False)   # "Xodimning to'yi", "Ramazon", "Milliy bayram"
+    reason = Column(Text, nullable=True)
+
+    # Kim yaratdi
+    created_by = Column(String(36), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=get_tashkent_time)
+    updated_at = Column(DateTime(timezone=True), default=get_tashkent_time, onupdate=get_tashkent_time)
+
+    is_active = Column(Boolean, default=True)
+
+    __table_args__ = (
+        Index('idx_sdo_company_dates', 'company_id', 'start_date', 'end_date'),
+        Index('idx_sdo_employee', 'employee_id'),
+        Index('idx_sdo_department', 'department_id'),
+        Index('idx_sdo_branch', 'branch_id'),
+        Index('idx_sdo_event_type', 'event_type'),
+    )
+
+    # Relationships
+    company = relationship("Company", back_populates="special_day_offs")
+    employee = relationship("Employee", back_populates="special_day_offs", foreign_keys=[employee_id])
+    department = relationship("Department", back_populates="special_day_offs")
+    branch = relationship("Branch", back_populates="special_day_offs")
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'company_id': self.company_id,
+            'employee_id': self.employee_id,
+            'employee_name': self.employee.full_name if self.employee else None,
+            'department_id': self.department_id,
+            'department_name': self.department.name if self.department else None,
+            'branch_id': self.branch_id,
+            'branch_name': self.branch.name if self.branch else None,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'event_type': self.event_type,
+            'override_start_time': str(self.override_start_time) if self.override_start_time else None,
+            'override_end_time': str(self.override_end_time) if self.override_end_time else None,
+            'title': self.title,
+            'reason': self.reason,
+            'is_active': self.is_active,
+            'scope': (
+                'employee' if self.employee_id else
+                'department' if self.department_id else
+                'branch' if self.branch_id else
+                'company'
+            ),
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# ========================================
 # DATABASE INITIALIZATION & MIGRATION
 # ========================================
 
@@ -813,6 +1018,96 @@ def run_migrations():
             print("  ✅ 3-tier late penalty columns added successfully!")
         except Exception as e:
             print(f"  ⚠️ 3-tier late penalty columns migration skipped (may already exist): {e}")
+
+        # ==========================================
+        # 4. WORK TIME OVERRIDES JADVALINI YARATISH
+        # ==========================================
+        if not table_exists('work_time_overrides'):
+            print("  📦 Creating 'work_time_overrides' table...")
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS work_time_overrides (
+                    id VARCHAR(36) PRIMARY KEY,
+                    company_id VARCHAR(36) NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+                    employee_id VARCHAR(36) REFERENCES employees(id) ON DELETE CASCADE,
+                    department_id VARCHAR(36) REFERENCES departments(id) ON DELETE CASCADE,
+                    branch_id VARCHAR(36) REFERENCES branches(id) ON DELETE CASCADE,
+                    start_date DATE NOT NULL,
+                    end_date DATE NOT NULL,
+                    work_start_time TIME,
+                    work_end_time TIME,
+                    title VARCHAR(255) NOT NULL,
+                    reason TEXT,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_by VARCHAR(36),
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_wto_company_dates ON work_time_overrides(company_id, start_date, end_date);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_wto_employee ON work_time_overrides(employee_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_wto_department ON work_time_overrides(department_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_wto_branch ON work_time_overrides(branch_id);"))
+            conn.commit()
+            print("  ✅ 'work_time_overrides' table created!")
+        else:
+            print("  ✅ 'work_time_overrides' already exists, skipping...")
+
+        # ==========================================
+        # 5. SPECIAL DAY OFFS JADVALINI YARATISH
+        # ==========================================
+        if not table_exists('special_day_offs'):
+            print("  📦 Creating 'special_day_offs' table...")
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS special_day_offs (
+                    id VARCHAR(36) PRIMARY KEY,
+                    company_id VARCHAR(36) NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+                    employee_id VARCHAR(36) REFERENCES employees(id) ON DELETE CASCADE,
+                    department_id VARCHAR(36) REFERENCES departments(id) ON DELETE CASCADE,
+                    branch_id VARCHAR(36) REFERENCES branches(id) ON DELETE CASCADE,
+                    start_date DATE NOT NULL,
+                    end_date DATE NOT NULL,
+                    event_type VARCHAR(50) NOT NULL,
+                    override_start_time TIME,
+                    override_end_time TIME,
+                    title VARCHAR(255) NOT NULL,
+                    reason TEXT,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_by VARCHAR(36),
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sdo_company_dates ON special_day_offs(company_id, start_date, end_date);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sdo_employee ON special_day_offs(employee_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sdo_department ON special_day_offs(department_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sdo_branch ON special_day_offs(branch_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sdo_event_type ON special_day_offs(event_type);"))
+            conn.commit()
+            print("  ✅ 'special_day_offs' table created!")
+        else:
+            print("  ✅ 'special_day_offs' already exists, skipping...")
+
+        # ==========================================
+        # 6. OVERTIME BONUS USTUNLARINI QO'SHISH
+        # ==========================================
+        print("  📦 Adding overtime bonus columns to company_settings...")
+        try:
+            conn.execute(text("""
+                ALTER TABLE company_settings
+                ADD COLUMN IF NOT EXISTS overtime_bonus_enabled BOOLEAN DEFAULT FALSE;
+            """))
+            conn.execute(text("""
+                ALTER TABLE company_settings
+                ADD COLUMN IF NOT EXISTS overtime_bonus_per_minute FLOAT DEFAULT 0.0;
+            """))
+            conn.execute(text("""
+                ALTER TABLE company_settings
+                ADD COLUMN IF NOT EXISTS overtime_min_minutes INTEGER DEFAULT 30;
+            """))
+            conn.commit()
+            print("  ✅ Overtime bonus columns added!")
+        except Exception as e:
+            print(f"  ⚠️ Overtime bonus columns skipped (may already exist): {e}")
 
     print("✅ Database migrations completed!")
 

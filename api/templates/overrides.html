@@ -1,0 +1,990 @@
+{% extends "base.html" %}
+
+{% block title %}Vaqt o'zgartirishlari - Davomat Tizimi{% endblock %}
+{% block page_title %}Vaqt o'zgartirishlari{% endblock %}
+{% block page_subtitle %}Ish vaqti, dam olish va maxsus kunlarni boshqarish{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tab-btn {
+        padding: 0.625rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        color: #64748b;
+    }
+    .tab-btn.active {
+        background: white;
+        color: #2563eb;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+    .tab-btn:not(.active):hover {
+        background: rgba(255,255,255,0.6);
+        color: #374151;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .scope-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .scope-company  { background:#dbeafe; color:#1e40af; }
+    .scope-branch   { background:#d1fae5; color:#065f46; }
+    .scope-department{ background:#fef3c7; color:#92400e; }
+    .scope-employee { background:#f3e8ff; color:#6b21a8; }
+
+    .event-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 10px; border-radius: 20px;
+        font-size: 0.7rem; font-weight: 600;
+    }
+    .event-day_off      { background:#fee2e2; color:#991b1b; }
+    .event-early_leave  { background:#fef3c7; color:#92400e; }
+    .event-late_start   { background:#d1fae5; color:#065f46; }
+
+    .card-row {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        transition: box-shadow 0.2s;
+    }
+    .card-row:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+    .toggle-switch {
+        position: relative; display: inline-block; width: 40px; height: 22px;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+    /* Vaqt input — 24 soatlik, faqat HH:MM */
+    .time-input {
+        font-family: 'Courier New', monospace;
+        font-size: 1rem;
+        letter-spacing: 0.05em;
+        text-align: center;
+    }
+    .time-input::placeholder { color: #94a3b8; font-size: 0.875rem; letter-spacing: 0; font-family: inherit; }
+    .toggle-slider {
+        position: absolute; cursor: pointer;
+        inset: 0; background: #e2e8f0; border-radius: 22px;
+        transition: 0.3s;
+    }
+    .toggle-slider:before {
+        content: ""; position: absolute;
+        height: 16px; width: 16px; left: 3px; bottom: 3px;
+        background: white; border-radius: 50%; transition: 0.3s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    input:checked + .toggle-slider { background: #2563eb; }
+    input:checked + .toggle-slider:before { transform: translateX(18px); }
+
+    .preview-box {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #bae6fd;
+        border-radius: 12px;
+        padding: 1.25rem;
+    }
+    .preview-rule {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Quick Action Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <button onclick="openWorkTimeModal()" class="stat-card p-6 hover:shadow-lg transition-all cursor-pointer text-left">
+        <div class="flex items-center justify-between mb-3">
+            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <i class="fas fa-clock text-2xl text-blue-600"></i>
+            </div>
+            <i class="fas fa-plus text-xl text-gray-300"></i>
+        </div>
+        <h3 class="font-semibold text-gray-800">Ish vaqtini o'zgartirish</h3>
+        <p class="text-sm text-gray-500 mt-1">Ramazon, qish/yoz vaqtlari va h.k.</p>
+    </button>
+
+    <button onclick="openSpecialDayModal('day_off')" class="stat-card p-6 hover:shadow-lg transition-all cursor-pointer text-left">
+        <div class="flex items-center justify-between mb-3">
+            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                <i class="fas fa-umbrella-beach text-2xl text-red-500"></i>
+            </div>
+            <i class="fas fa-plus text-xl text-gray-300"></i>
+        </div>
+        <h3 class="font-semibold text-gray-800">Dam olish kuni belgilash</h3>
+        <p class="text-sm text-gray-500 mt-1">To'y, bayram, shaxsiy kun va h.k.</p>
+    </button>
+
+    <button onclick="openSpecialDayModal('early_leave')" class="stat-card p-6 hover:shadow-lg transition-all cursor-pointer text-left">
+        <div class="flex items-center justify-between mb-3">
+            <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                <i class="fas fa-door-open text-2xl text-yellow-600"></i>
+            </div>
+            <i class="fas fa-plus text-xl text-gray-300"></i>
+        </div>
+        <h3 class="font-semibold text-gray-800">Erta ketish / Kech kelish</h3>
+        <p class="text-sm text-gray-500 mt-1">Maxsus ruxsat, jarimasiz</p>
+    </button>
+</div>
+
+<!-- Tabs -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+    <div class="p-2 bg-gray-50 rounded-xl m-4 flex gap-1 w-fit">
+        <button class="tab-btn active" onclick="switchTab('worktime', this)">
+            <i class="fas fa-clock mr-2"></i>Ish vaqti o'zgartirishlari
+        </button>
+        <button class="tab-btn" onclick="switchTab('specialdays', this)">
+            <i class="fas fa-calendar-times mr-2"></i>Maxsus kunlar
+        </button>
+        <button class="tab-btn" onclick="switchTab('preview', this)">
+            <i class="fas fa-eye mr-2"></i>Preview / Tekshirish
+        </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="px-6 pb-4 border-b border-gray-100">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <select id="filterBranch" class="form-input" onchange="loadCurrentTab()">
+                <option value="">Barcha filiallar</option>
+            </select>
+            <select id="filterDepartment" class="form-input" onchange="loadCurrentTab()">
+                <option value="">Barcha bo'limlar</option>
+            </select>
+            <select id="filterEmployee" class="form-input" onchange="loadCurrentTab()">
+                <option value="">Barcha xodimlar</option>
+            </select>
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" id="filterActiveOnly" onchange="loadCurrentTab()" class="w-4 h-4 rounded">
+                <span class="text-sm text-gray-600">Faqat aktiv</span>
+            </label>
+        </div>
+    </div>
+
+    <div class="p-6">
+        <!-- WORK TIME TAB -->
+        <div id="tab-worktime" class="tab-panel active">
+            <div id="worktimeList" class="space-y-3">
+                <div class="flex items-center justify-center py-12 text-gray-400">
+                    <div class="text-center">
+                        <div class="spinner mx-auto mb-4"></div>
+                        <p>Yuklanmoqda...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SPECIAL DAYS TAB -->
+        <div id="tab-specialdays" class="tab-panel">
+            <div class="flex gap-2 mb-4">
+                <button onclick="filterEventType('')" id="etAll" class="tab-btn active text-xs px-3 py-1.5">Barchasi</button>
+                <button onclick="filterEventType('day_off')" id="etDayOff" class="tab-btn text-xs px-3 py-1.5">
+                    <span class="event-badge event-day_off">Dam olish</span>
+                </button>
+                <button onclick="filterEventType('early_leave')" id="etEarlyLeave" class="tab-btn text-xs px-3 py-1.5">
+                    <span class="event-badge event-early_leave">Erta ketish</span>
+                </button>
+                <button onclick="filterEventType('late_start')" id="etLateStart" class="tab-btn text-xs px-3 py-1.5">
+                    <span class="event-badge event-late_start">Kech kelish</span>
+                </button>
+            </div>
+            <div id="specialDaysList" class="space-y-3">
+                <div class="flex items-center justify-center py-12 text-gray-400">
+                    <div class="text-center">
+                        <div class="spinner mx-auto mb-4"></div>
+                        <p>Yuklanmoqda...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PREVIEW TAB -->
+        <div id="tab-preview" class="tab-panel">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-4">Xodim va sana tanlang</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="form-label">Xodim <span class="text-red-500">*</span></label>
+                            <select id="previewEmployee" class="form-input">
+                                <option value="">Tanlang...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Sana <span class="text-red-500">*</span></label>
+                            <input type="date" id="previewDate" class="form-input" value="">
+                        </div>
+                        <button onclick="runPreview()" class="btn-primary w-full">
+                            <i class="fas fa-search mr-2"></i>Tekshirish
+                        </button>
+                    </div>
+                </div>
+                <div id="previewResult" class="hidden">
+                    <h3 class="font-semibold text-gray-700 mb-4">Natija</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     WORK TIME MODAL
+================================================================ -->
+<div id="workTimeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+    <div class="modal-content w-full">
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800" id="workTimeModalTitle">Ish vaqtini o'zgartirish</h3>
+                <p class="text-sm text-gray-500 mt-1">Vaqt oralig'ida kelish / ketish vaqtini o'zgartirish</p>
+            </div>
+            <button onclick="closeWorkTimeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div class="p-6 space-y-5">
+            <input type="hidden" id="wtEditId">
+
+            <div>
+                <label class="form-label">Sarlavha <span class="text-red-500">*</span></label>
+                <input type="text" id="wtTitle" placeholder="Masalan: Ramazon oyi 2025" class="form-input">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="form-label">Boshlanish sanasi <span class="text-red-500">*</span></label>
+                    <input type="date" id="wtStartDate" class="form-input">
+                </div>
+                <div>
+                    <label class="form-label">Tugash sanasi <span class="text-red-500">*</span></label>
+                    <input type="date" id="wtEndDate" class="form-input">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="form-label">Yangi KELISH vaqti</label>
+                    <input type="text" id="wtStartTime" class="form-input time-input" placeholder="09:00" maxlength="5" oninput="formatTimeInput(this)">
+                    <p class="text-xs text-gray-400 mt-1">Bo'sh qoldirsangiz — kelish vaqti o'zgarmaydi</p>
+                </div>
+                <div>
+                    <label class="form-label">Yangi KETISH vaqti</label>
+                    <input type="text" id="wtEndTime" class="form-input time-input" placeholder="18:00" maxlength="5" oninput="formatTimeInput(this)">
+                    <p class="text-xs text-gray-400 mt-1">Bo'sh qoldirsangiz — ketish vaqti o'zgarmaydi</p>
+                </div>
+            </div>
+
+            <!-- Scope -->
+            <div>
+                <label class="form-label">Qo'llanish doirasi</label>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                    <button type="button" onclick="setScopeWT('company')" id="wtScopeCompany" class="scope-btn-wt active px-3 py-2 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 text-xs font-semibold">
+                        <i class="fas fa-globe block mb-1 text-lg"></i>Butun kompaniya
+                    </button>
+                    <button type="button" onclick="setScopeWT('branch')" id="wtScopeBranch" class="scope-btn-wt px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-xs font-semibold hover:border-green-300">
+                        <i class="fas fa-building block mb-1 text-lg"></i>Filial
+                    </button>
+                    <button type="button" onclick="setScopeWT('department')" id="wtScopeDept" class="scope-btn-wt px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-xs font-semibold hover:border-yellow-300">
+                        <i class="fas fa-sitemap block mb-1 text-lg"></i>Bo'lim
+                    </button>
+                    <button type="button" onclick="setScopeWT('employee')" id="wtScopeEmp" class="scope-btn-wt px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-xs font-semibold hover:border-purple-300">
+                        <i class="fas fa-user block mb-1 text-lg"></i>Xodim
+                    </button>
+                </div>
+                <div id="wtScopeFieldBranch" class="hidden">
+                    <select id="wtBranchId" class="form-input"><option value="">Filial tanlang...</option></select>
+                </div>
+                <div id="wtScopeFieldDept" class="hidden">
+                    <select id="wtDeptId" class="form-input"><option value="">Bo'lim tanlang...</option></select>
+                </div>
+                <div id="wtScopeFieldEmp" class="hidden">
+                    <select id="wtEmpId" class="form-input"><option value="">Xodim tanlang...</option></select>
+                </div>
+            </div>
+
+            <div>
+                <label class="form-label">Sabab / Izoh</label>
+                <textarea id="wtReason" rows="2" placeholder="Ixtiyoriy izoh..." class="form-input resize-none"></textarea>
+            </div>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 rounded-b-2xl flex gap-3 justify-end">
+            <button onclick="closeWorkTimeModal()" class="btn-secondary">Bekor qilish</button>
+            <button onclick="saveWorkTimeOverride()" class="btn-primary">
+                <i class="fas fa-save mr-2"></i>Saqlash
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     SPECIAL DAY MODAL
+================================================================ -->
+<div id="specialDayModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+    <div class="modal-content w-full">
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800" id="specialDayModalTitle">Maxsus kun belgilash</h3>
+                <p class="text-sm text-gray-500 mt-1" id="specialDayModalSubtitle">Dam olish / erta ketish / kech kelish</p>
+            </div>
+            <button onclick="closeSpecialDayModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div class="p-6 space-y-5">
+            <input type="hidden" id="sdEditId">
+            <input type="hidden" id="sdEventType">
+
+            <!-- Event type selector -->
+            <div>
+                <label class="form-label">Turi <span class="text-red-500">*</span></label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" onclick="setEventType('day_off')" id="etBtnDayOff"
+                        class="et-btn px-3 py-3 rounded-lg border-2 border-red-400 bg-red-50 text-red-700 text-xs font-semibold text-center">
+                        <i class="fas fa-umbrella-beach block mb-1 text-2xl"></i>Dam olish kuni<br>
+                        <span class="text-red-400 font-normal">Ish kuni emas, jarima yo'q</span>
+                    </button>
+                    <button type="button" onclick="setEventType('early_leave')" id="etBtnEarlyLeave"
+                        class="et-btn px-3 py-3 rounded-lg border-2 border-gray-200 text-gray-500 text-xs font-semibold text-center hover:border-yellow-300">
+                        <i class="fas fa-door-open block mb-1 text-2xl"></i>Erta ketish<br>
+                        <span class="text-gray-400 font-normal">Belgilangan vaqtdan erta ketish OK</span>
+                    </button>
+                    <button type="button" onclick="setEventType('late_start')" id="etBtnLateStart"
+                        class="et-btn px-3 py-3 rounded-lg border-2 border-gray-200 text-gray-500 text-xs font-semibold text-center hover:border-green-300">
+                        <i class="fas fa-bed block mb-1 text-2xl"></i>Kech kelish<br>
+                        <span class="text-gray-400 font-normal">Belgilangan vaqtgacha kelish OK</span>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <label class="form-label">Sarlavha <span class="text-red-500">*</span></label>
+                <input type="text" id="sdTitle" placeholder="Masalan: Abdullayevning to'yi" class="form-input">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="form-label">Boshlanish sanasi <span class="text-red-500">*</span></label>
+                    <input type="date" id="sdStartDate" class="form-input" oninput="syncEndDate()">
+                </div>
+                <div>
+                    <label class="form-label">Tugash sanasi <span class="text-red-500">*</span></label>
+                    <input type="date" id="sdEndDate" class="form-input">
+                </div>
+            </div>
+
+            <!-- Override time fields (shown only for early_leave / late_start) -->
+            <div id="sdTimeField" class="hidden">
+                <div class="grid grid-cols-2 gap-4">
+                    <div id="sdOverrideEndField">
+                        <label class="form-label" id="sdEndTimeLabel">Erta ketish vaqti</label>
+                        <input type="text" id="sdOverrideEndTime" class="form-input time-input" placeholder="17:00" maxlength="5" oninput="formatTimeInput(this)">
+                        <p class="text-xs text-gray-400 mt-1" id="sdEndTimeHint">Bu vaqtdan keyin ketish erta ketish hisoblanmaydi</p>
+                    </div>
+                    <div id="sdOverrideStartField" class="hidden">
+                        <label class="form-label">Kech kelish vaqti</label>
+                        <input type="text" id="sdOverrideStartTime" class="form-input time-input" placeholder="10:00" maxlength="5" oninput="formatTimeInput(this)">
+                        <p class="text-xs text-gray-400 mt-1">Bu vaqtgacha kelish kech kelish hisoblanmaydi</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scope -->
+            <div>
+                <label class="form-label">Qo'llanish doirasi</label>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                    <button type="button" onclick="setScopeSD('company')" id="sdScopeCompany" class="scope-btn-sd active px-3 py-2 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 text-xs font-semibold">
+                        <i class="fas fa-globe block mb-1 text-lg"></i>Butun kompaniya
+                    </button>
+                    <button type="button" onclick="setScopeSD('branch')" id="sdScopeBranch" class="scope-btn-sd px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-xs font-semibold hover:border-green-300">
+                        <i class="fas fa-building block mb-1 text-lg"></i>Filial
+                    </button>
+                    <button type="button" onclick="setScopeSD('department')" id="sdScopeDept" class="scope-btn-sd px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-xs font-semibold hover:border-yellow-300">
+                        <i class="fas fa-sitemap block mb-1 text-lg"></i>Bo'lim
+                    </button>
+                    <button type="button" onclick="setScopeSD('employee')" id="sdScopeEmp" class="scope-btn-sd px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-xs font-semibold hover:border-purple-300">
+                        <i class="fas fa-user block mb-1 text-lg"></i>Xodim
+                    </button>
+                </div>
+                <div id="sdScopeFieldBranch" class="hidden">
+                    <select id="sdBranchId" class="form-input"><option value="">Filial tanlang...</option></select>
+                </div>
+                <div id="sdScopeFieldDept" class="hidden">
+                    <select id="sdDeptId" class="form-input"><option value="">Bo'lim tanlang...</option></select>
+                </div>
+                <div id="sdScopeFieldEmp" class="hidden">
+                    <select id="sdEmpId" class="form-input"><option value="">Xodim tanlang...</option></select>
+                </div>
+            </div>
+
+            <div>
+                <label class="form-label">Sabab / Izoh</label>
+                <textarea id="sdReason" rows="2" placeholder="Ixtiyoriy izoh..." class="form-input resize-none"></textarea>
+            </div>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 rounded-b-2xl flex gap-3 justify-end">
+            <button onclick="closeSpecialDayModal()" class="btn-secondary">Bekor qilish</button>
+            <button onclick="saveSpecialDayOff()" class="btn-primary">
+                <i class="fas fa-save mr-2"></i>Saqlash
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// token — api.js da ham ishlatiladi, conflict bo'lmasligi uchun var ishlatamiz
+// ─── VAQT INPUT YORDAMCHILARI (24-soatlik) ───────────
+function formatTimeInput(input) {
+    var v = input.value.replace(/[^0-9]/g, '');
+    if (v.length >= 3) {
+        v = v.slice(0, 2) + ':' + v.slice(2, 4);
+    }
+    input.value = v;
+    if (input.value.length === 5) {
+        input.style.borderColor = isValidTime(input.value) ? '#10b981' : '#ef4444';
+    } else {
+        input.style.borderColor = '';
+    }
+}
+
+function isValidTime(val) {
+    if (!val || val.length !== 5) return false;
+    var parts = val.split(':');
+    if (parts.length !== 2) return false;
+    var h = parseInt(parts[0]), m = parseInt(parts[1]);
+    return h >= 0 && h <= 23 && m >= 0 && m <= 59;
+}
+
+function getTimeValue(id) {
+    var val = (document.getElementById(id).value || '').trim();
+    if (!val) return null;
+    if (isValidTime(val.slice(0, 5))) return val.slice(0, 5);
+    return null;
+}
+
+function setTimeValue(id, val) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.value = val ? val.slice(0, 5) : '';
+    el.style.borderColor = '';
+}
+
+var token = localStorage.getItem('token');
+var currentEventTypeFilter = '';
+var branches = [], departments = [], employees = [];
+var wtCurrentScope = 'company';
+var sdCurrentScope = 'company';
+
+// ─── INIT ─────────────────────────────────────────────
+async function init() {
+    var today = new Date().toISOString().split('T')[0];
+    document.getElementById('previewDate').value = today;
+    await Promise.all([loadBranches(), loadDepartments(), loadEmployees()]);
+    loadWorkTimeOverrides();
+}
+
+async function loadBranches() {
+    try {
+        var res = await fetch('/api/branches/', {headers:{Authorization:'Bearer '+token}});
+        var data = await res.json();
+        branches = (data.data && data.data.branches) ? data.data.branches : (data.data || []);
+        ['filterBranch','wtBranchId','sdBranchId'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var base = el.options[0].outerHTML;
+            el.innerHTML = base + branches.map(function(b){ return '<option value="'+b.id+'">'+b.name+'</option>'; }).join('');
+        });
+    } catch(e) { console.error('Branches load error:', e); }
+}
+
+async function loadDepartments() {
+    try {
+        var res = await fetch('/api/departments', {headers:{Authorization:'Bearer '+token}});
+        var data = await res.json();
+        departments = (data.data && data.data.departments) ? data.data.departments : (data.data || []);
+        ['filterDepartment','wtDeptId','sdDeptId'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var base = el.options[0].outerHTML;
+            el.innerHTML = base + departments.map(function(d){ return '<option value="'+d.id+'">'+d.name+'</option>'; }).join('');
+        });
+    } catch(e) { console.error('Departments load error:', e); }
+}
+
+async function loadEmployees() {
+    try {
+        var res = await fetch('/api/employees/?per_page=500', {headers:{Authorization:'Bearer '+token}});
+        var data = await res.json();
+        employees = (data.data && data.data.employees) ? data.data.employees : (data.data || []);
+        ['filterEmployee','wtEmpId','sdEmpId','previewEmployee'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var base = el.options[0].outerHTML;
+            el.innerHTML = base + employees.map(function(e){ return '<option value="'+e.id+'">'+e.full_name+' ('+e.employee_no+')</option>'; }).join('');
+        });
+    } catch(e) { console.error('Employees load error:', e); }
+}
+
+// ─── TABS ──────────────────────────────────────────────
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    document.getElementById('tab-'+name).classList.add('active');
+    btn.classList.add('active');
+    if (name === 'worktime') loadWorkTimeOverrides();
+    else if (name === 'specialdays') loadSpecialDays();
+}
+
+function loadCurrentTab() {
+    var active = document.querySelector('.tab-panel.active');
+    if (!active) return;
+    if (active.id === 'tab-worktime') loadWorkTimeOverrides();
+    else if (active.id === 'tab-specialdays') loadSpecialDays();
+}
+
+// ─── FILTERS ───────────────────────────────────────────
+function getFilters() {
+    return {
+        branch_id: document.getElementById('filterBranch').value,
+        department_id: document.getElementById('filterDepartment').value,
+        employee_id: document.getElementById('filterEmployee').value,
+        active_only: document.getElementById('filterActiveOnly').checked
+    };
+}
+
+function buildQuery(extra) {
+    extra = extra || {};
+    var f = Object.assign({}, getFilters(), extra);
+    return Object.entries(f).filter(function(kv){ return kv[1]!==''&&kv[1]!==false; }).map(function(kv){ return kv[0]+'='+encodeURIComponent(kv[1]); }).join('&');
+}
+
+// ─── WORK TIME OVERRIDES LIST ──────────────────────────
+async function loadWorkTimeOverrides() {
+    var el = document.getElementById('worktimeList');
+    el.innerHTML = loadingHTML();
+    try {
+        var res = await fetch('/api/overrides/work-time?' + buildQuery(), {headers:{Authorization:'Bearer '+token}});
+        var data = await res.json();
+        var items = data.data || [];
+        if (!items.length) { el.innerHTML = emptyHTML("Hech qanday ish vaqti o'zgartirishi topilmadi", 'clock'); return; }
+        el.innerHTML = items.map(renderWorkTimeCard).join('');
+    } catch(e) { el.innerHTML = errorHTML(); }
+}
+
+function renderWorkTimeCard(item) {
+    var scope = scopeBadge(item.scope, item);
+    var times = [];
+    if (item.work_start_time) times.push('<span class="text-green-600 font-semibold">Kelish: '+item.work_start_time.slice(0,5)+'</span>');
+    if (item.work_end_time)   times.push('<span class="text-red-600 font-semibold">Ketish: '+item.work_end_time.slice(0,5)+'</span>');
+    return '<div class="card-row flex flex-col md:flex-row md:items-center gap-3 justify-between" id="wt-'+item.id+'">'
+        +'<div class="flex items-start gap-3 flex-1 min-w-0">'
+        +'<div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5"><i class="fas fa-clock text-blue-600"></i></div>'
+        +'<div class="min-w-0">'
+        +'<div class="flex flex-wrap items-center gap-2 mb-1"><span class="font-semibold text-gray-800">'+item.title+'</span>'+scope
+        +(item.is_active ? '<span class="badge badge-success text-xs">Aktiv</span>' : '<span class="badge badge-secondary text-xs">Nofaol</span>')+'</div>'
+        +'<div class="flex flex-wrap gap-3 text-sm text-gray-500 mb-1">'
+        +'<span><i class="fas fa-calendar-alt mr-1 text-gray-400"></i>'+item.start_date+' → '+item.end_date+'</span>'
+        +times.join('<span class="text-gray-300 mx-1">|</span>')+'</div>'
+        +(item.reason ? '<p class="text-xs text-gray-400 truncate max-w-md">'+item.reason+'</p>' : '')
+        +'</div></div>'
+        +'<div class="flex items-center gap-2 flex-shrink-0">'
+        +'<button onclick="applyRetroactive(\''+item.id+'\', \''+item.title.replace(/'/g,"\\'")+'\', \''+item.start_date+'\', \''+item.end_date+'\')" class="px-3 py-1.5 text-xs font-semibold bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 flex items-center gap-1" title="O\'tgan kunlarga qo\'llash"><i class="fas fa-sync-alt"></i><span class="hidden sm:inline">Qo\'llash</span></button>'
+        +'<label class="toggle-switch"><input type="checkbox" '+(item.is_active?'checked':'')+' onchange="toggleWorkTime(\''+item.id+'\', this)"><span class="toggle-slider"></span></label>'
+        +'<button onclick="editWorkTime(\''+item.id+'\')" class="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><i class="fas fa-edit"></i></button>'
+        +'<button onclick="deleteWorkTime(\''+item.id+'\', \''+item.title.replace(/'/g,"\\'")+'\') " class="p-2 text-red-400 hover:bg-red-50 rounded-lg"><i class="fas fa-trash"></i></button>'
+        +'</div></div>';
+}
+
+// ─── SPECIAL DAYS LIST ─────────────────────────────────
+function filterEventType(type) {
+    currentEventTypeFilter = type;
+    ['etAll','etDayOff','etEarlyLeave','etLateStart'].forEach(function(id){ document.getElementById(id) && document.getElementById(id).classList.remove('active'); });
+    var map = {'':'etAll','day_off':'etDayOff','early_leave':'etEarlyLeave','late_start':'etLateStart'};
+    document.getElementById(map[type]) && document.getElementById(map[type]).classList.add('active');
+    loadSpecialDays();
+}
+
+async function loadSpecialDays() {
+    var el = document.getElementById('specialDaysList');
+    el.innerHTML = loadingHTML();
+    try {
+        var extra = currentEventTypeFilter ? {event_type: currentEventTypeFilter} : {};
+        var res = await fetch('/api/overrides/special-days?' + buildQuery(extra), {headers:{Authorization:'Bearer '+token}});
+        var data = await res.json();
+        var items = data.data || [];
+        if (!items.length) { el.innerHTML = emptyHTML('Hech qanday maxsus kun topilmadi', 'calendar-times'); return; }
+        el.innerHTML = items.map(renderSpecialDayCard).join('');
+    } catch(e) { el.innerHTML = errorHTML(); }
+}
+
+function renderSpecialDayCard(item) {
+    var scope = scopeBadge(item.scope, item);
+    var evMap = {day_off: ['Dam olish','event-day_off','umbrella-beach','red'], early_leave: ['Erta ketish','event-early_leave','door-open','yellow'], late_start: ['Kech kelish','event-late_start','bed','green']};
+    var ev = evMap[item.event_type] || ['Noma\'lum','badge-secondary','question','gray'];
+    var timeInfo = '';
+    if (item.event_type === 'early_leave' && item.override_end_time)
+        timeInfo = '<span class="text-yellow-600"><i class="fas fa-door-open mr-1"></i>'+item.override_end_time.slice(0,5)+' dan keyin ketish OK</span>';
+    else if (item.event_type === 'late_start' && item.override_start_time)
+        timeInfo = '<span class="text-green-600"><i class="fas fa-bed mr-1"></i>'+item.override_start_time.slice(0,5)+' gacha kelish OK</span>';
+    var isOneDay = item.start_date === item.end_date;
+    var bgColor = item.event_type==='day_off'?'bg-red-100':item.event_type==='early_leave'?'bg-yellow-100':'bg-green-100';
+    var iconColor = item.event_type==='day_off'?'text-red-500':item.event_type==='early_leave'?'text-yellow-600':'text-green-600';
+    return '<div class="card-row flex flex-col md:flex-row md:items-center gap-3 justify-between" id="sd-'+item.id+'">'
+        +'<div class="flex items-start gap-3 flex-1 min-w-0">'
+        +'<div class="w-10 h-10 rounded-lg '+bgColor+' flex items-center justify-center flex-shrink-0 mt-0.5"><i class="fas fa-'+ev[2]+' '+iconColor+'"></i></div>'
+        +'<div class="min-w-0">'
+        +'<div class="flex flex-wrap items-center gap-2 mb-1"><span class="font-semibold text-gray-800">'+item.title+'</span>'
+        +'<span class="event-badge '+ev[1]+'">'+ev[0]+'</span>'+scope
+        +(item.is_active?'<span class="badge badge-success text-xs">Aktiv</span>':'<span class="badge badge-secondary text-xs">Nofaol</span>')+'</div>'
+        +'<div class="flex flex-wrap gap-3 text-sm text-gray-500 mb-1">'
+        +'<span><i class="fas fa-calendar-alt mr-1 text-gray-400"></i>'+(isOneDay?item.start_date:item.start_date+' → '+item.end_date)+'</span>'
+        +(timeInfo?timeInfo:'')+'</div>'
+        +(item.reason?'<p class="text-xs text-gray-400 truncate max-w-md">'+item.reason+'</p>':'')
+        +'</div></div>'
+        +'<div class="flex items-center gap-2 flex-shrink-0">'
+        +'<label class="toggle-switch"><input type="checkbox" '+(item.is_active?'checked':'')+' onchange="toggleSpecialDay(\''+item.id+'\', this)"><span class="toggle-slider"></span></label>'
+        +'<button onclick="editSpecialDay(\''+item.id+'\')" class="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><i class="fas fa-edit"></i></button>'
+        +'<button onclick="deleteSpecialDay(\''+item.id+'\', \''+item.title.replace(/'/g,"\\'")+'\') " class="p-2 text-red-400 hover:bg-red-50 rounded-lg"><i class="fas fa-trash"></i></button>'
+        +'</div></div>';
+}
+
+// ─── WORK TIME MODAL ───────────────────────────────────
+function openWorkTimeModal() {
+    document.getElementById('wtEditId').value = '';
+    document.getElementById('wtTitle').value = '';
+    document.getElementById('wtStartDate').value = '';
+    document.getElementById('wtEndDate').value = '';
+    document.getElementById('wtStartTime').value = '';
+    document.getElementById('wtEndTime').value = '';
+    document.getElementById('wtReason').value = '';
+    document.getElementById('workTimeModalTitle').textContent = "Ish vaqtini o'zgartirish";
+    setScopeWT('company');
+    document.getElementById('workTimeModal').classList.remove('hidden');
+}
+
+function closeWorkTimeModal() { document.getElementById('workTimeModal').classList.add('hidden'); }
+
+function setScopeWT(scope) {
+    wtCurrentScope = scope;
+    var map = {company:'wtScopeCompany', branch:'wtScopeBranch', department:'wtScopeDept', employee:'wtScopeEmp'};
+    ['company','branch','department','employee'].forEach(function(s) {
+        var btn = document.getElementById(map[s]);
+        if (!btn) return;
+        var active = s === scope;
+        btn.className = 'scope-btn-wt px-3 py-2 rounded-lg border-2 text-xs font-semibold ' + (active ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-500');
+    });
+    document.getElementById('wtScopeFieldBranch').classList.toggle('hidden', scope !== 'branch');
+    document.getElementById('wtScopeFieldDept').classList.toggle('hidden', scope !== 'department');
+    document.getElementById('wtScopeFieldEmp').classList.toggle('hidden', scope !== 'employee');
+}
+
+async function saveWorkTimeOverride() {
+    var id = document.getElementById('wtEditId').value;
+    var startTime = getTimeValue('wtStartTime');
+    var endTime   = getTimeValue('wtEndTime');
+    if (!startTime && !endTime) { showNotification('Kamida kelish yoki ketish vaqtini kiriting (masalan 09:00)', 'error'); return; }
+    if (startTime && !isValidTime(startTime)) { showNotification('Kelish vaqti noto\'g\'ri (masalan: 09:00)', 'error'); return; }
+    if (endTime   && !isValidTime(endTime))   { showNotification('Ketish vaqti noto\'g\'ri (masalan: 18:00)', 'error'); return; }
+    var body = {
+        title: document.getElementById('wtTitle').value.trim(),
+        start_date: document.getElementById('wtStartDate').value,
+        end_date: document.getElementById('wtEndDate').value,
+        work_start_time: startTime || null,
+        work_end_time: endTime || null,
+        reason: document.getElementById('wtReason').value.trim() || null,
+        employee_id: wtCurrentScope==='employee' ? (document.getElementById('wtEmpId').value || null) : null,
+        department_id: wtCurrentScope==='department' ? (document.getElementById('wtDeptId').value || null) : null,
+        branch_id: wtCurrentScope==='branch' ? (document.getElementById('wtBranchId').value || null) : null,
+    };
+    if (!body.title || !body.start_date || !body.end_date) { showNotification('Sarlavha, boshlanish va tugash sanasi majburiy', 'error'); return; }
+    try {
+        showLoading();
+        var url = id ? '/api/overrides/work-time/'+id : '/api/overrides/work-time';
+        var method = id ? 'PUT' : 'POST';
+        var res = await fetch(url, {method:method, headers:{'Content-Type':'application/json', Authorization:'Bearer '+token}, body: JSON.stringify(body)});
+        var data = await res.json();
+        if (data.success) { showNotification(id ? 'Yangilandi' : 'Yaratildi', 'success'); closeWorkTimeModal(); loadWorkTimeOverrides(); }
+        else showNotification(data.error || 'Xato yuz berdi', 'error');
+    } catch(e) { showNotification('Serverga ulanishda xato', 'error'); }
+    finally { hideLoading(); }
+}
+
+async function editWorkTime(id) {
+    try {
+        var res = await fetch('/api/overrides/work-time/'+id, {headers:{Authorization:'Bearer '+token}});
+        var data = await res.json();
+        var item = data.data;
+        document.getElementById('wtEditId').value = item.id;
+        document.getElementById('wtTitle').value = item.title;
+        document.getElementById('wtStartDate').value = item.start_date;
+        document.getElementById('wtEndDate').value = item.end_date;
+        setTimeValue('wtStartTime', item.work_start_time);
+        setTimeValue('wtEndTime', item.work_end_time);
+        document.getElementById('wtReason').value = item.reason || '';
+        document.getElementById('workTimeModalTitle').textContent = 'Tahrirlash';
+        setScopeWT(item.scope);
+        if (item.scope==='branch' && item.branch_id) document.getElementById('wtBranchId').value = item.branch_id;
+        if (item.scope==='department' && item.department_id) document.getElementById('wtDeptId').value = item.department_id;
+        if (item.scope==='employee' && item.employee_id) document.getElementById('wtEmpId').value = item.employee_id;
+        document.getElementById('workTimeModal').classList.remove('hidden');
+    } catch(e) { showNotification("Ma'lumot yuklanmadi", 'error'); }
+}
+
+async function toggleWorkTime(id, checkbox) {
+    try {
+        var res = await fetch('/api/overrides/work-time/'+id+'/toggle', {method:'POST', headers:{Authorization:'Bearer '+token}});
+        var data = await res.json();
+        if (!data.success) { checkbox.checked = !checkbox.checked; showNotification('Xato yuz berdi', 'error'); }
+    } catch(e) { checkbox.checked = !checkbox.checked; }
+}
+
+async function deleteWorkTime(id, title) {
+    if (!confirm('"'+title+'" ni o\'chirishni tasdiqlaysizmi?')) return;
+    try {
+        var res = await fetch('/api/overrides/work-time/'+id, {method:'DELETE', headers:{Authorization:'Bearer '+token}});
+        var data = await res.json();
+        if (data.success) { showNotification("O'chirildi", 'success'); loadWorkTimeOverrides(); }
+        else showNotification(data.error || 'Xato', 'error');
+    } catch(e) { showNotification('Serverga ulanishda xato', 'error'); }
+}
+
+async function applyRetroactive(id, title, startDate, endDate) {
+    var msg = '"'+title+'" o\'zgartirishini\n'
+        + startDate+' dan '+endDate+' gacha bo\'lgan\n'
+        + 'barcha davomat va jarimalarga retroaktiv qo\'llash.\n\n'
+        + 'Kechikish daqiqalari va jarima summalari qayta hisoblanadi.\n'
+        + 'Davom etasizmi?';
+    if (!confirm(msg)) return;
+
+    showLoading();
+    try {
+        var res = await fetch('/api/overrides/work-time/'+id+'/apply-retroactive', {
+            method: 'POST',
+            headers: {Authorization: 'Bearer '+token}
+        });
+        var data = await res.json();
+        if (data.success) {
+            var s = data.data;
+            var resultMsg = '✅ Muvaffaqiyatli qo\'llandi!\n\n'
+                + '📋 Qayta hisoblangan kunlar: '+s.processed_logs+'\n'
+                + '✏️ Yangilangan jarimalar: '+s.updated_penalties+'\n'
+                + '🗑️ O\'chirilgan jarimalar: '+s.deleted_penalties+'\n'
+                + '➕ Yangi jarimalar: '+s.created_penalties+'\n'
+                + '⏭️ O\'tkazib yuborilgan: '+s.skipped;
+            alert(resultMsg);
+            showNotification('Retroaktiv qo\'llash muvaffaqiyatli!', 'success');
+        } else {
+            showNotification(data.error || 'Xato yuz berdi', 'error');
+        }
+    } catch(e) {
+        showNotification('Serverga ulanishda xato', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// ─── SPECIAL DAY MODAL ─────────────────────────────────
+function openSpecialDayModal(prefillType) {
+    document.getElementById('sdEditId').value = '';
+    document.getElementById('sdTitle').value = '';
+    document.getElementById('sdStartDate').value = '';
+    document.getElementById('sdEndDate').value = '';
+    document.getElementById('sdOverrideEndTime').value = '';
+    document.getElementById('sdOverrideStartTime').value = '';
+    document.getElementById('sdReason').value = '';
+    document.getElementById('specialDayModalTitle').textContent = 'Maxsus kun belgilash';
+    setScopeSD('company');
+    setEventType(prefillType || 'day_off');
+    document.getElementById('specialDayModal').classList.remove('hidden');
+}
+
+function closeSpecialDayModal() { document.getElementById('specialDayModal').classList.add('hidden'); }
+
+function syncEndDate() {
+    var start = document.getElementById('sdStartDate').value;
+    if (start && !document.getElementById('sdEndDate').value) document.getElementById('sdEndDate').value = start;
+}
+
+function setEventType(type) {
+    document.getElementById('sdEventType').value = type;
+    var configs = {
+        day_off:     {border:'border-red-400',    bg:'bg-red-50',    text:'text-red-700'},
+        early_leave: {border:'border-yellow-400', bg:'bg-yellow-50', text:'text-yellow-700'},
+        late_start:  {border:'border-green-400',  bg:'bg-green-50',  text:'text-green-700'}
+    };
+    var btnMap = {day_off:'etBtnDayOff', early_leave:'etBtnEarlyLeave', late_start:'etBtnLateStart'};
+    Object.keys(btnMap).forEach(function(t) {
+        var btn = document.getElementById(btnMap[t]);
+        if (!btn) return;
+        if (t === type) {
+            btn.className = 'et-btn px-3 py-3 rounded-lg border-2 '+configs[t].border+' '+configs[t].bg+' '+configs[t].text+' text-xs font-semibold text-center';
+        } else {
+            btn.className = 'et-btn px-3 py-3 rounded-lg border-2 border-gray-200 text-gray-500 text-xs font-semibold text-center hover:border-gray-300';
+        }
+    });
+    document.getElementById('sdTimeField').classList.toggle('hidden', type === 'day_off');
+    document.getElementById('sdOverrideEndField').classList.toggle('hidden', type !== 'early_leave');
+    document.getElementById('sdOverrideStartField').classList.toggle('hidden', type !== 'late_start');
+}
+
+function setScopeSD(scope) {
+    sdCurrentScope = scope;
+    var map = {company:'sdScopeCompany', branch:'sdScopeBranch', department:'sdScopeDept', employee:'sdScopeEmp'};
+    ['company','branch','department','employee'].forEach(function(s) {
+        var btn = document.getElementById(map[s]);
+        if (!btn) return;
+        var active = s === scope;
+        btn.className = 'scope-btn-sd px-3 py-2 rounded-lg border-2 text-xs font-semibold ' + (active ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-500');
+    });
+    document.getElementById('sdScopeFieldBranch').classList.toggle('hidden', scope !== 'branch');
+    document.getElementById('sdScopeFieldDept').classList.toggle('hidden', scope !== 'department');
+    document.getElementById('sdScopeFieldEmp').classList.toggle('hidden', scope !== 'employee');
+}
+
+async function saveSpecialDayOff() {
+    var id = document.getElementById('sdEditId').value;
+    var eventType = document.getElementById('sdEventType').value;
+    var body = {
+        title: document.getElementById('sdTitle').value.trim(),
+        event_type: eventType,
+        start_date: document.getElementById('sdStartDate').value,
+        end_date: document.getElementById('sdEndDate').value,
+        override_end_time: getTimeValue('sdOverrideEndTime'),
+        override_start_time: getTimeValue('sdOverrideStartTime'),
+        reason: document.getElementById('sdReason').value.trim() || null,
+        employee_id: sdCurrentScope==='employee' ? (document.getElementById('sdEmpId').value || null) : null,
+        department_id: sdCurrentScope==='department' ? (document.getElementById('sdDeptId').value || null) : null,
+        branch_id: sdCurrentScope==='branch' ? (document.getElementById('sdBranchId').value || null) : null,
+    };
+    if (!body.title || !body.start_date || !body.end_date || !body.event_type) { showNotification('Sarlavha, tur va sanalar majburiy', 'error'); return; }
+    try {
+        showLoading();
+        var url = id ? '/api/overrides/special-days/'+id : '/api/overrides/special-days';
+        var method = id ? 'PUT' : 'POST';
+        var res = await fetch(url, {method:method, headers:{'Content-Type':'application/json', Authorization:'Bearer '+token}, body:JSON.stringify(body)});
+        var data = await res.json();
+        if (data.success) { showNotification(id ? 'Yangilandi' : 'Yaratildi', 'success'); closeSpecialDayModal(); loadSpecialDays(); }
+        else showNotification(data.error || 'Xato yuz berdi', 'error');
+    } catch(e) { showNotification('Serverga ulanishda xato', 'error'); }
+    finally { hideLoading(); }
+}
+
+async function editSpecialDay(id) {
+    try {
+        var res = await fetch('/api/overrides/special-days/'+id, {headers:{Authorization:'Bearer '+token}});
+        var data = await res.json();
+        var item = data.data;
+        document.getElementById('sdEditId').value = item.id;
+        document.getElementById('sdTitle').value = item.title;
+        document.getElementById('sdStartDate').value = item.start_date;
+        document.getElementById('sdEndDate').value = item.end_date;
+        setTimeValue('sdOverrideEndTime', item.override_end_time);
+        setTimeValue('sdOverrideStartTime', item.override_start_time);
+        document.getElementById('sdReason').value = item.reason || '';
+        document.getElementById('specialDayModalTitle').textContent = 'Tahrirlash';
+        setEventType(item.event_type);
+        setScopeSD(item.scope);
+        if (item.scope==='branch' && item.branch_id) document.getElementById('sdBranchId').value = item.branch_id;
+        if (item.scope==='department' && item.department_id) document.getElementById('sdDeptId').value = item.department_id;
+        if (item.scope==='employee' && item.employee_id) document.getElementById('sdEmpId').value = item.employee_id;
+        document.getElementById('specialDayModal').classList.remove('hidden');
+    } catch(e) { showNotification("Ma'lumot yuklanmadi", 'error'); }
+}
+
+async function toggleSpecialDay(id, checkbox) {
+    try {
+        var res = await fetch('/api/overrides/special-days/'+id+'/toggle', {method:'POST', headers:{Authorization:'Bearer '+token}});
+        var data = await res.json();
+        if (!data.success) { checkbox.checked = !checkbox.checked; showNotification('Xato yuz berdi', 'error'); }
+    } catch(e) { checkbox.checked = !checkbox.checked; }
+}
+
+async function deleteSpecialDay(id, title) {
+    if (!confirm('"'+title+'" ni o\'chirishni tasdiqlaysizmi?')) return;
+    try {
+        var res = await fetch('/api/overrides/special-days/'+id, {method:'DELETE', headers:{Authorization:'Bearer '+token}});
+        var data = await res.json();
+        if (data.success) { showNotification("O'chirildi", 'success'); loadSpecialDays(); }
+        else showNotification(data.error || 'Xato', 'error');
+    } catch(e) { showNotification('Serverga ulanishda xato', 'error'); }
+}
+
+// ─── PREVIEW ───────────────────────────────────────────
+async function runPreview() {
+    var empId = document.getElementById('previewEmployee').value;
+    var date  = document.getElementById('previewDate').value;
+    if (!empId || !date) { showNotification('Xodim va sana tanlang', 'warning'); return; }
+    var resultEl = document.getElementById('previewResult');
+    resultEl.innerHTML = '<div class="flex items-center justify-center py-8"><div class="spinner"></div></div>';
+    resultEl.classList.remove('hidden');
+    try {
+        var res = await fetch('/api/overrides/preview?employee_id='+empId+'&date='+date, {headers:{Authorization:'Bearer '+token}});
+        var data = await res.json();
+        if (!data.success) { resultEl.innerHTML = '<div class="text-red-500 text-sm p-4">'+data.error+'</div>'; return; }
+        var r = data.data;
+        var dayOffBadge = r.is_day_off
+            ? '<span class="badge badge-danger ml-2">Dam olish kuni</span>'
+            : '<span class="badge badge-success ml-2">Ish kuni</span>';
+        var timesHtml = !r.is_day_off ? '<div class="grid grid-cols-2 gap-3">'
+            +'<div class="preview-rule text-center"><div class="text-xs text-gray-400 mb-1">Kelish</div>'
+            +'<div class="font-bold text-lg text-green-600">'+(r.effective_work_start?r.effective_work_start.slice(0,5):'--:--')+'</div>'
+            +(r.effective_work_start!==r.default_work_start?'<div class="text-xs text-blue-500 mt-1">(asl: '+(r.default_work_start?r.default_work_start.slice(0,5):'--')+')</div>':'')
+            +'</div><div class="preview-rule text-center"><div class="text-xs text-gray-400 mb-1">Ketish</div>'
+            +'<div class="font-bold text-lg text-red-500">'+(r.effective_work_end?r.effective_work_end.slice(0,5):'--:--')+'</div>'
+            +(r.effective_work_end!==r.default_work_end?'<div class="text-xs text-blue-500 mt-1">(asl: '+(r.default_work_end?r.default_work_end.slice(0,5):'--')+')</div>':'')
+            +'</div></div>' : '';
+        resultEl.innerHTML = '<h3 class="font-semibold text-gray-700 mb-4">Natija</h3>'
+            +'<div class="preview-box space-y-3">'
+            +'<div class="flex items-center justify-between"><span class="text-sm font-medium text-gray-700">'+r.employee_name+'</span>'
+            +'<span class="text-sm text-gray-500">'+r.date+' — '+r.day_name+'</span></div>'
+            +'<div class="flex items-center gap-2"><span class="text-sm text-gray-600">Holat:</span>'+dayOffBadge+'</div>'
+            +timesHtml
+            +'<div class="space-y-2"><div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Qo\'llangan qoidalar:</div>'
+            +r.rules_applied.map(function(rule){ return '<div class="preview-rule text-sm text-gray-700">'+rule+'</div>'; }).join('')
+            +'</div></div>';
+    } catch(e) { resultEl.innerHTML = '<div class="text-red-500 text-sm p-4">Xato: '+e.message+'</div>'; }
+}
+
+// ─── HELPERS ───────────────────────────────────────────
+function scopeBadge(scope, item) {
+    var labels = {
+        company:    ['Butun kompaniya','scope-company','globe'],
+        branch:     [(item.branch_name||'Filial'),'scope-branch','building'],
+        department: [(item.department_name||"Bo'lim"),'scope-department','sitemap'],
+        employee:   [(item.employee_name||'Xodim'),'scope-employee','user']
+    };
+    var info = labels[scope] || ["Noma'lum",'badge-secondary','question'];
+    return '<span class="scope-badge '+info[1]+'"><i class="fas fa-'+info[2]+' mr-1"></i>'+info[0]+'</span>';
+}
+
+function loadingHTML() {
+    return '<div class="flex items-center justify-center py-12 text-gray-400"><div class="text-center"><div class="spinner mx-auto mb-3"></div><p class="text-sm">Yuklanmoqda...</p></div></div>';
+}
+function emptyHTML(msg, icon) {
+    return '<div class="flex flex-col items-center justify-center py-16 text-gray-400"><i class="fas fa-'+(icon||'info-circle')+' text-5xl mb-4 opacity-30"></i><p class="text-base font-medium">'+msg+'</p><p class="text-sm mt-1">Yuqoridagi tugmalar orqali yangi qo\'shing</p></div>';
+}
+function errorHTML() {
+    return '<div class="text-center py-12 text-red-400"><i class="fas fa-exclamation-triangle text-4xl mb-3"></i><p>Ma\'lumot yuklanishida xato</p></div>';
+}
+
+// Modal overlay click to close
+document.getElementById('workTimeModal').addEventListener('click', function(e){ if(e.target===this) closeWorkTimeModal(); });
+document.getElementById('specialDayModal').addEventListener('click', function(e){ if(e.target===this) closeSpecialDayModal(); });
+
+// ─── START ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', init);
+</script>
+{% endblock %}

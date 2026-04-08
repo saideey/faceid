@@ -84,7 +84,12 @@ def get_settings():
             # YANGI: Erta ketish jarima sozlamalari
             # ==========================================
             'early_leave_penalty_enabled': getattr(settings, 'early_leave_penalty_enabled', True),
-            'daily_work_hours': getattr(settings, 'daily_work_hours', 8)
+            'daily_work_hours': getattr(settings, 'daily_work_hours', 8),
+
+            # YANGI: Ortiqcha ish vaqti bonusi
+            'overtime_bonus_enabled': getattr(settings, 'overtime_bonus_enabled', False),
+            'overtime_bonus_per_minute': getattr(settings, 'overtime_bonus_per_minute', 0.0),
+            'overtime_min_minutes': getattr(settings, 'overtime_min_minutes', 30),
         }
 
         logger.info(f"📋 Settings loaded for company {g.company_id}")
@@ -158,6 +163,14 @@ def update_settings():
             settings.early_leave_penalty_enabled = data['early_leave_penalty_enabled']
         if 'daily_work_hours' in data:
             settings.daily_work_hours = int(data['daily_work_hours'])
+
+        # YANGI: Ortiqcha ish vaqti bonusi
+        if 'overtime_bonus_enabled' in data:
+            settings.overtime_bonus_enabled = bool(data['overtime_bonus_enabled'])
+        if 'overtime_bonus_per_minute' in data:
+            settings.overtime_bonus_per_minute = float(data['overtime_bonus_per_minute'])
+        if 'overtime_min_minutes' in data:
+            settings.overtime_min_minutes = int(data['overtime_min_minutes'])
 
         db.commit()
 

@@ -23,6 +23,7 @@ from routes.bonus import bonus_bp
 from routes.salary import salary_bp
 from routes.settings import settings_bp
 from routes.export import export_bp
+from routes.work_schedule_overrides import overrides_bp
 
 
 def create_initial_superadmin(app):
@@ -128,6 +129,7 @@ def create_app():
     app.register_blueprint(salary_bp, url_prefix='/api/salary')
     app.register_blueprint(settings_bp, url_prefix='/api/settings')
     app.register_blueprint(export_bp, url_prefix='/api/export')
+    app.register_blueprint(overrides_bp, url_prefix='/api/overrides')
 
     # Frontend Routes
     @app.route('/')
@@ -149,6 +151,10 @@ def create_app():
     @app.route('/schedule')
     def schedule_page():
         return render_template('schedule.html')
+
+    @app.route('/overrides')
+    def overrides_page():
+        return render_template('overrides.html')
 
     @app.route('/salary')
     def salary_page():
