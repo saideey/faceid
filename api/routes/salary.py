@@ -404,9 +404,9 @@ def calculate_employee_salary(employee, start_date, end_date, company_settings, 
         overtime_bonus_amount = 0.0
         overtime_bonus_details = []
 
-        overtime_bonus_enabled = getattr(settings, 'overtime_bonus_enabled', False)
-        overtime_bonus_per_minute = float(getattr(settings, 'overtime_bonus_per_minute', 0.0))
-        overtime_min_minutes = int(getattr(settings, 'overtime_min_minutes', 30))
+        overtime_bonus_enabled = getattr(company_settings, 'overtime_bonus_enabled', False)
+        overtime_bonus_per_minute = float(getattr(company_settings, 'overtime_bonus_per_minute', 0.0))
+        overtime_min_minutes = int(getattr(company_settings, 'overtime_min_minutes', 30))
 
         if overtime_bonus_enabled and overtime_bonus_per_minute > 0:
             # Attendance log lardan overtime_minutes ni yig'amiz

@@ -400,15 +400,16 @@
     <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
     <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar fixed left-0 top-0 h-screen w-64 overflow-y-auto">
-        <div class="p-6">
-            <!-- Close button for mobile -->
-            <button onclick="toggleSidebar()" class="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white">
-                <i class="fas fa-times text-xl"></i>
-            </button>
+    <aside id="sidebar" class="sidebar fixed left-0 top-0 h-screen w-64 flex flex-col">
+        <!-- Close button for mobile -->
+        <button onclick="toggleSidebar()" class="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white z-10">
+            <i class="fas fa-times text-xl"></i>
+        </button>
 
+        <!-- Scrollable area: logo + nav -->
+        <div class="flex-1 min-h-0 overflow-y-auto p-6 pb-3">
             <!-- Company Logo and Name - Vertical Layout -->
-            <div class="flex flex-col items-center mb-8 space-y-3">
+            <div class="flex flex-col items-center mb-6 space-y-3">
                 <!-- Company Logo - Larger -->
                 <div id="sidebarLogoContainer" class="w-20 h-20 bg-blue-500 rounded-xl flex items-center justify-center overflow-hidden shadow-lg">
                     <img id="sidebarLogo" src="" alt="Logo" class="hidden w-full h-full object-cover">
@@ -481,11 +482,16 @@
                     <i class="fas fa-cog w-5"></i>
                     <span>Sozlamalar</span>
                 </a>
+
+                <a href="/telegram" class="sidebar-item flex items-center space-x-3 text-gray-300 px-4 py-3 rounded-lg">
+                    <i class="fab fa-telegram w-5"></i>
+                    <span>Telegram Bot</span>
+                </a>
             </nav>
         </div>
 
-        <!-- User info at bottom -->
-        <div class="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-700">
+        <!-- User info at bottom - fixed, not overlapping -->
+        <div class="flex-shrink-0 px-4 py-4 border-t border-gray-700 bg-[#0f172a]">
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
                     <i class="fas fa-user text-white"></i>
@@ -494,7 +500,7 @@
                     <p class="text-white font-medium text-sm truncate" id="userName">Admin</p>
                     <p class="text-gray-400 text-xs truncate" id="userEmail">admin@example.com</p>
                 </div>
-                <button onclick="logout()" class="text-gray-400 hover:text-white flex-shrink-0">
+                <button onclick="logout()" title="Chiqish" class="text-gray-400 hover:text-white flex-shrink-0 p-2 rounded-lg hover:bg-gray-700">
                     <i class="fas fa-sign-out-alt"></i>
                 </button>
             </div>

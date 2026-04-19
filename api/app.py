@@ -24,6 +24,7 @@ from routes.salary import salary_bp
 from routes.settings import settings_bp
 from routes.export import export_bp
 from routes.work_schedule_overrides import overrides_bp
+from routes.telegram_settings import telegram_bp
 
 
 def create_initial_superadmin(app):
@@ -130,6 +131,7 @@ def create_app():
     app.register_blueprint(settings_bp, url_prefix='/api/settings')
     app.register_blueprint(export_bp, url_prefix='/api/export')
     app.register_blueprint(overrides_bp, url_prefix='/api/overrides')
+    app.register_blueprint(telegram_bp, url_prefix='/api/telegram')
 
     # Frontend Routes
     @app.route('/')
@@ -179,6 +181,10 @@ def create_app():
     @app.route('/settings')
     def settings_page():
         return render_template('settings.html')
+
+    @app.route('/telegram')
+    def telegram_page():
+        return render_template('telegram.html')
 
     @app.route('/branches')
     def branches_page():

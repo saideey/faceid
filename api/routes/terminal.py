@@ -302,6 +302,8 @@ def terminal_checkin_with_branch(company_id, branch_id):
 
         employee_name = employee.full_name
         employee_number = employee.employee_no
+        employee_dept = employee.department.name if employee.department else ''
+        employee_position = employee.position or ''
         company_name = company.company_name
         branch_name = branch.name
 
@@ -327,8 +329,40 @@ def terminal_checkin_with_branch(company_id, branch_id):
 
             attendance_log.branch_id = branch_id
 
+            # Jarima summasi hisoblash (Telegram uchun)
+            penalty_amount = 0.0
+            late_count_this_month = 0
+
             if attendance_log.late_minutes > 0:
                 logger.info(f"⚠️ KECHIKISH: {attendance_log.late_minutes} daqiqa")
+
+                # Bu oyda necha marta kechikkan (bugungi kun ham qo'shiladi)
+                from datetime import date as dt_date
+                from sqlalchemy import extract, and_
+                today_date = attendance_time.date()
+                late_count_this_month = db.query(AttendanceLog).filter(
+                    and_(
+                        AttendanceLog.employee_id == employee.id,
+                        AttendanceLog.late_minutes > 0,
+                        extract('month', AttendanceLog.date) == today_date.month,
+                        extract('year', AttendanceLog.date) == today_date.year,
+                    )
+                ).count()
+
+                # Stavkani aniqlash (3 bosqichli)
+                late_penalty_first  = getattr(company_settings, 'late_penalty_first',  1000.0) or 1000.0
+                late_penalty_second = getattr(company_settings, 'late_penalty_second', 3000.0) or 3000.0
+                late_penalty_third  = getattr(company_settings, 'late_penalty_third',  5000.0) or 5000.0
+
+                if late_count_this_month <= 1:
+                    rate = late_penalty_first
+                elif late_count_this_month == 2:
+                    rate = late_penalty_second
+                else:
+                    rate = late_penalty_third
+
+                penalty_amount = attendance_log.late_minutes * rate
+
                 create_penalty_for_lateness(
                     employee=employee,
                     attendance_log=attendance_log,
@@ -337,6 +371,23 @@ def terminal_checkin_with_branch(company_id, branch_id):
                 )
 
             db.commit()
+
+            # ── TELEGRAM XABARI ──────────────────────────────
+            try:
+                from services.telegram_service import notify_checkin
+                notify_checkin(
+                    company_id=company_id,
+                    employee_name=employee_name,
+                    late_minutes=attendance_log.late_minutes or 0,
+                    check_in_time=attendance_log.check_in_time,
+                    dept=employee_dept,
+                    position=employee_position,
+                    penalty_amount=penalty_amount,
+                    late_count_month=late_count_this_month,
+                )
+            except Exception as tg_err:
+                logger.warning(f"⚠️ Telegram xabar yuborishda xato: {tg_err}")
+            # ─────────────────────────────────────────────────
 
             status_emoji = "⚠️" if attendance_log.late_minutes > 0 else "✅"
             status_text = f"KECHIKDI ({attendance_log.late_minutes} min)" if attendance_log.late_minutes > 0 else "VAQTIDA"
@@ -552,6 +603,20 @@ def terminal_checkout_with_branch(company_id, branch_id):
             )
 
             work_hours = round(updated_log.total_work_minutes / 60, 2) if updated_log.total_work_minutes else 0
+
+            # ── TELEGRAM XABARI ──────────────────────────────
+            try:
+                from services.telegram_service import notify_checkout
+                notify_checkout(
+                    company_id=company_id,
+                    employee_name=employee_name,
+                    check_out_time=updated_log.check_out_time,
+                    total_work_minutes=updated_log.total_work_minutes or 0,
+                    early_leave_minutes=updated_log.early_leave_minutes or 0,
+                )
+            except Exception as tg_err:
+                logger.warning(f"⚠️ Telegram checkout xabar xatosi: {tg_err}")
+            # ─────────────────────────────────────────────────
 
             logger.info(f"✅ CHIQISH MUVAFFAQIYATLI: {employee_name}")
             logger.info(f"⏱️ ISH VAQTI: {work_hours} soat")

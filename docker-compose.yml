@@ -35,6 +35,7 @@ services:
       - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL:-admin@attendance.com}
       - SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD:-Admin@2025!Secure}
       - DEBUG=False
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
     volumes:
       - ./api/uploads:/app/uploads
       - ./api/exports:/app/exports
@@ -53,6 +54,25 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - attendance-network
+
+  telegram-bot:
+    build: ./api
+    container_name: attendance-telegram-bot
+    command: python telegram_bot.py
+    environment:
+      - DATABASE_URL=postgresql://attendance_user:attendance_pass_2025@db:5432/attendance_system_db
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TZ=Asia/Tashkent
+    volumes:
+      - ./api/logs:/app/logs
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - attendance-network
 

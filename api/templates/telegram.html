@@ -1,0 +1,506 @@
+{% extends "base.html" %}
+
+{% block title %}Telegram Bot - Davomat Tizimi{% endblock %}
+{% block page_title %}Telegram Bot{% endblock %}
+{% block page_subtitle %}Xodimlar davomatini Telegram guruhga ulash{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-card {
+        border-radius: 12px;
+        padding: 1.25rem;
+        border: 1px solid;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .toggle-wrap {
+        position: relative;
+        display: inline-block;
+        width: 52px;
+        height: 28px;
+        flex-shrink: 0;
+    }
+    .toggle-wrap input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+        position: absolute; inset: 0;
+        background: #d1d5db;
+        border-radius: 28px;
+        transition: background 0.25s;
+        cursor: pointer;
+    }
+    .toggle-thumb {
+        position: absolute;
+        top: 3px; left: 3px;
+        width: 22px; height: 22px;
+        background: white;
+        border-radius: 50%;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+        transition: transform 0.25s;
+        cursor: pointer;
+    }
+    input:checked ~ .toggle-track { background: #3b82f6; }
+    input:checked ~ .toggle-thumb { transform: translateX(24px); }
+
+    .notify-card {
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        user-select: none;
+    }
+    .notify-card:has(input:checked) {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
+    .notify-card:hover { border-color: #93c5fd; }
+
+    .tg-user-row {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 0.875rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: box-shadow 0.2s;
+    }
+    .tg-user-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
+    .step-badge {
+        width: 28px; height: 28px;
+        background: #3b82f6;
+        color: white;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+    }
+    code {
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        color: #334155;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- ── BOT HOLATI ─────────────────────────────────────── -->
+    <div id="botStatusWrap" class="status-card border-gray-200 bg-gray-50">
+        <div id="botStatusIcon" class="w-12 h-12 rounded-xl bg-gray-200 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-circle-notch fa-spin text-gray-400 text-xl"></i>
+        </div>
+        <div class="flex-1">
+            <div id="botStatusTitle" class="font-semibold text-gray-600">Tekshirilmoqda...</div>
+            <div id="botStatusDesc" class="text-sm text-gray-400 mt-0.5"></div>
+        </div>
+        <button onclick="testBot()" class="btn-secondary text-sm">
+            <i class="fas fa-plug mr-1"></i>Tekshirish
+        </button>
+    </div>
+
+    <!-- ── ASOSIY SOZLAMALAR ──────────────────────────────── -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fab fa-telegram text-blue-500 text-xl"></i>
+                    Sozlamalar
+                </h3>
+                <p class="text-sm text-gray-500 mt-0.5">Guruh ID va xabar turlarini sozlang</p>
+            </div>
+            <!-- Yoqish toggle -->
+            <div class="flex items-center gap-3">
+                <span class="text-sm font-medium text-gray-600" id="tgEnabledLabel">O'chirilgan</span>
+                <label class="toggle-wrap">
+                    <input type="checkbox" id="tgEnabled" onchange="onToggleChange()">
+                    <span class="toggle-track"></span>
+                    <span class="toggle-thumb"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <!-- Guruh -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="form-label">
+                        Telegram Guruh ID <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="tgGroupChatId" class="form-input font-mono"
+                           placeholder="-1001234567890">
+                    <p class="text-xs text-gray-400 mt-1">
+                        Manfiy raqam (guruhlar uchun): <code>-1001234567890</code>
+                    </p>
+                </div>
+                <div>
+                    <label class="form-label">Guruh nomi <span class="text-gray-400 font-normal">(eslatma uchun)</span></label>
+                    <input type="text" id="tgGroupName" class="form-input" placeholder="Ishchilar guruhi">
+                </div>
+            </div>
+
+            <!-- Xabar turlari -->
+            <div>
+                <label class="form-label mb-3">Qanday xabarlar yuborilsin?</label>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <label class="notify-card">
+                        <input type="checkbox" id="tgCheckin" class="hidden">
+                        <div class="text-2xl mb-1">✅</div>
+                        <div class="font-medium text-sm text-gray-800">Keldi</div>
+                        <div class="text-xs text-gray-500 mt-0.5">Xodim ishga kelganda</div>
+                    </label>
+                    <label class="notify-card">
+                        <input type="checkbox" id="tgLate" class="hidden">
+                        <div class="text-2xl mb-1">⚠️</div>
+                        <div class="font-medium text-sm text-gray-800">Kechikish</div>
+                        <div class="text-xs text-gray-500 mt-0.5">Kechikib kelganda</div>
+                    </label>
+                    <label class="notify-card">
+                        <input type="checkbox" id="tgCheckout" class="hidden">
+                        <div class="text-2xl mb-1">🚪</div>
+                        <div class="font-medium text-sm text-gray-800">Ketdi</div>
+                        <div class="text-xs text-gray-500 mt-0.5">Xodim ketganda</div>
+                    </label>
+                    <label class="notify-card">
+                        <input type="checkbox" id="tgAbsent" class="hidden">
+                        <div class="text-2xl mb-1">❌</div>
+                        <div class="font-medium text-sm text-gray-800">Kelmadi</div>
+                        <div class="text-xs text-gray-500 mt-0.5">Ishga kelmaganda</div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Tugmalar -->
+            <div class="flex flex-wrap gap-3 pt-2">
+                <button onclick="saveSettings()" class="btn-primary">
+                    <i class="fas fa-save mr-2"></i>Saqlash
+                </button>
+                <button onclick="sendTestMsg()" class="btn-secondary">
+                    <i class="fas fa-paper-plane mr-2"></i>Test xabar yuborish
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── ULANGAN XODIMLAR ───────────────────────────────── -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800">Bot orqali ulangan xodimlar</h3>
+                <p class="text-sm text-gray-500 mt-0.5">
+                    Xodim botga <code>/start</code> yuborgandan so'ng bu yerda ko'rinadi
+                </p>
+            </div>
+            <button onclick="loadUsers()" class="btn-secondary text-sm">
+                <i class="fas fa-sync mr-1"></i>Yangilash
+            </button>
+        </div>
+        <div class="p-6">
+            <div id="usersList">
+                <div class="flex items-center justify-center py-8 text-gray-400">
+                    <div class="spinner mr-3"></div>Yuklanmoqda...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── YO'RIQNOMA ────────────────────────────────────── -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div class="p-6 border-b border-gray-100">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-book text-blue-500"></i>
+                Qanday sozlash kerak?
+            </h3>
+        </div>
+        <div class="p-6 space-y-4">
+            <div class="flex gap-4">
+                <div class="step-badge">1</div>
+                <div class="text-sm text-gray-700">
+                    <strong>Bot yaratish:</strong>
+                    Telegramda <a href="https://t.me/BotFather" target="_blank" class="text-blue-500 underline font-medium">@BotFather</a> ga
+                    <code>/newbot</code> yuboring va tokenni oling
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <div class="step-badge">2</div>
+                <div class="text-sm text-gray-700">
+                    <strong>Token o'rnatish:</strong>
+                    Server <code>.env</code> fayliga qo'shing:
+                    <code class="block mt-1 p-2">TELEGRAM_BOT_TOKEN=1234567890:ABCdef...</code>
+                    Keyin dockerni qayta ishga tushiring: <code>docker compose restart</code>
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <div class="step-badge">3</div>
+                <div class="text-sm text-gray-700">
+                    <strong>Guruh yaratish:</strong>
+                    Telegram guruh yarating → botni guruhga qo'shing → botni <strong>admin</strong> qiling
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <div class="step-badge">4</div>
+                <div class="text-sm text-gray-700">
+                    <strong>Guruh ID olish:</strong>
+                    Guruhga <a href="https://t.me/userinfobot" target="_blank" class="text-blue-500 underline">@userinfobot</a> ni qo'shing —
+                    u guruh ID sini beradi (manfiy raqam, masalan: <code>-1001234567890</code>)
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <div class="step-badge">5</div>
+                <div class="text-sm text-gray-700">
+                    <strong>Bot serviceni ishga tushirish:</strong>
+                    <code class="block mt-1 p-2">docker compose --profile telegram up -d</code>
+                    Bu buyruq alohida bot container yaratadi
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <div class="step-badge">6</div>
+                <div class="text-sm text-gray-700">
+                    <strong>Xodimlar uchun:</strong>
+                    Xodimlar botga <code>/start</code> yuborib, telefon raqami orqali
+                    tizimga kirishadi va <code>/men</code>, <code>/oylik</code> kabi buyruqlardan foydalanishadi
+                </div>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-2">
+                <p class="text-sm text-blue-700">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    <strong>Bot buyruqlari (xodimlar uchun):</strong>
+                    <code>/start</code> — Kirish |
+                    <code>/men</code> — Bugungi davomat |
+                    <code>/oylik</code> — Oy statistikasi |
+                    <code>/hafta</code> — Hafta davomati |
+                    <code>/yordam</code> — Yordam
+                </p>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var token = localStorage.getItem('token');
+
+// ── YUKLASH ────────────────────────────────────────────
+async function loadPage() {
+    await loadSettings();
+    await loadUsers();
+    await checkBotStatus();
+}
+
+async function loadSettings() {
+    try {
+        var res = await fetch('/api/telegram/settings', {
+            headers: {Authorization: 'Bearer ' + token}
+        });
+        var data = await res.json();
+        if (!data.success) return;
+        var d = data.data;
+
+        // Toggle
+        setToggle(d.is_enabled || false);
+
+        // Maydonlar
+        document.getElementById('tgGroupChatId').value = d.group_chat_id || '';
+        document.getElementById('tgGroupName').value = d.group_name || '';
+        document.getElementById('tgCheckin').checked = d.notify_checkin !== false;
+        document.getElementById('tgLate').checked = d.notify_late !== false;
+        document.getElementById('tgCheckout').checked = d.notify_checkout || false;
+        document.getElementById('tgAbsent').checked = d.notify_absent || false;
+
+        // Notify card vizual yangilash
+        ['tgCheckin','tgLate','tgCheckout','tgAbsent'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.dispatchEvent(new Event('change'));
+        });
+
+    } catch(e) { console.error('Settings load error:', e); }
+}
+
+async function checkBotStatus() {
+    var wrap = document.getElementById('botStatusWrap');
+    var icon = document.getElementById('botStatusIcon');
+    var title = document.getElementById('botStatusTitle');
+    var desc = document.getElementById('botStatusDesc');
+    try {
+        var res = await fetch('/api/telegram/test-bot', {
+            headers: {Authorization: 'Bearer ' + token}
+        });
+        var data = await res.json();
+        if (data.success) {
+            wrap.className = 'status-card border-green-200 bg-green-50';
+            icon.className = 'w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0';
+            icon.innerHTML = '<i class="fas fa-check-circle text-green-500 text-2xl"></i>';
+            title.className = 'font-semibold text-green-700';
+            title.textContent = '✅ Bot ulandi: @' + (data.data.bot_username || '?');
+            desc.textContent = data.data.bot_name || '';
+        } else {
+            setBotError(wrap, icon, title, desc, data.error);
+        }
+    } catch(e) {
+        setBotError(wrap, icon, title, desc, 'Server bilan aloqa yo\'q');
+    }
+}
+
+function setBotError(wrap, icon, title, desc, msg) {
+    wrap.className = 'status-card border-orange-200 bg-orange-50';
+    icon.className = 'w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0';
+    icon.innerHTML = '<i class="fas fa-exclamation-triangle text-orange-500 text-2xl"></i>';
+    title.className = 'font-semibold text-orange-700';
+    title.textContent = 'Bot token sozlanmagan';
+    desc.textContent = msg || '.env ga TELEGRAM_BOT_TOKEN= qo\'ying';
+}
+
+async function testBot() {
+    try {
+        showLoading();
+        var res = await fetch('/api/telegram/test-bot', {
+            headers: {Authorization: 'Bearer ' + token}
+        });
+        var data = await res.json();
+        if (data.success) {
+            showNotification('✅ Bot ulandi: @' + (data.data.bot_username || '?'), 'success');
+            checkBotStatus();
+        } else {
+            showNotification('❌ ' + (data.error || 'Bot ulanmadi'), 'error');
+        }
+    } catch(e) {
+        showNotification('Xato yuz berdi', 'error');
+    } finally { hideLoading(); }
+}
+
+// ── SAQLASH ───────────────────────────────────────────
+async function saveSettings() {
+    var body = {
+        is_enabled: document.getElementById('tgEnabled').checked,
+        group_chat_id: document.getElementById('tgGroupChatId').value.trim() || null,
+        group_name: document.getElementById('tgGroupName').value.trim() || null,
+        notify_checkin: document.getElementById('tgCheckin').checked,
+        notify_late: document.getElementById('tgLate').checked,
+        notify_checkout: document.getElementById('tgCheckout').checked,
+        notify_absent: document.getElementById('tgAbsent').checked,
+    };
+    if (body.is_enabled && !body.group_chat_id) {
+        showNotification('Guruh ID ni kiriting!', 'error'); return;
+    }
+    try {
+        showLoading();
+        var res = await fetch('/api/telegram/settings', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token},
+            body: JSON.stringify(body)
+        });
+        var data = await res.json();
+        if (data.success) {
+            showNotification('✅ Saqlandi!', 'success');
+        } else {
+            showNotification('❌ ' + (data.error || 'Xato'), 'error');
+        }
+    } catch(e) { showNotification('Xato yuz berdi', 'error'); }
+    finally { hideLoading(); }
+}
+
+async function sendTestMsg() {
+    try {
+        showLoading();
+        var res = await fetch('/api/telegram/test-message', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token},
+            body: JSON.stringify({message: '🔔 Davomat tizimi muvaffaqiyatli ulandi!'})
+        });
+        var data = await res.json();
+        if (data.success) {
+            showNotification('✅ Test xabar yuborildi!', 'success');
+        } else {
+            showNotification('❌ ' + (data.error || 'Xabar yuborib bo\'lmadi'), 'error');
+        }
+    } catch(e) { showNotification('Xato yuz berdi', 'error'); }
+    finally { hideLoading(); }
+}
+
+// ── XODIMLAR ──────────────────────────────────────────
+async function loadUsers() {
+    var el = document.getElementById('usersList');
+    try {
+        var res = await fetch('/api/telegram/users', {
+            headers: {Authorization: 'Bearer ' + token}
+        });
+        var data = await res.json();
+        var users = data.data || [];
+
+        if (!users.length) {
+            el.innerHTML = '<div class="flex flex-col items-center py-10 text-gray-400">'
+                + '<i class="fab fa-telegram text-5xl mb-3 opacity-30"></i>'
+                + '<p class="font-medium">Hali hech kim ulanmagan</p>'
+                + '<p class="text-sm mt-1">Xodimlar botga <code>/start</code> yuborganida bu yerda ko\'rinadi</p>'
+                + '</div>';
+            return;
+        }
+
+        el.innerHTML = '<div class="space-y-2">' + users.map(function(u) {
+            var badge = u.is_verified
+                ? '<span class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">✅ Tasdiqlangan</span>'
+                : '<span class="text-xs bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full font-medium">⏳ Kutilmoqda</span>';
+            var uname = u.telegram_username ? '<span class="text-blue-500">@'+u.telegram_username+'</span>' : '';
+            var phone = u.telegram_phone ? u.telegram_phone : '';
+            var sub = [uname, phone].filter(Boolean).join(' • ');
+            return '<div class="tg-user-row">'
+                + '<div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">'
+                + '<i class="fab fa-telegram text-blue-500 text-lg"></i></div>'
+                + '<div class="flex-1 min-w-0">'
+                + '<div class="font-medium text-gray-800 text-sm">' + (u.employee_name || '—') + '</div>'
+                + (sub ? '<div class="text-xs text-gray-500 mt-0.5">' + sub + '</div>' : '')
+                + '</div>'
+                + badge
+                + '<button onclick="deleteUser(\''+u.id+'\')" title="Ulanishni uzish"'
+                + ' class="p-2 text-red-400 hover:bg-red-50 rounded-lg ml-1">'
+                + '<i class="fas fa-unlink text-sm"></i></button>'
+                + '</div>';
+        }).join('') + '</div>';
+    } catch(e) {
+        el.innerHTML = '<p class="text-red-400 text-center py-6 text-sm">Xato yuz berdi</p>';
+    }
+}
+
+async function deleteUser(id) {
+    if (!confirm('Xodimning Telegram ulanishini uzishni tasdiqlaysizmi?')) return;
+    try {
+        var res = await fetch('/api/telegram/users/' + id, {
+            method: 'DELETE',
+            headers: {Authorization: 'Bearer ' + token}
+        });
+        var data = await res.json();
+        if (data.success) {
+            showNotification('Ulanish uzildi', 'success');
+            loadUsers();
+        }
+    } catch(e) { showNotification('Xato', 'error'); }
+}
+
+// ── TOGGLE ────────────────────────────────────────────
+function setToggle(enabled) {
+    var cb = document.getElementById('tgEnabled');
+    var label = document.getElementById('tgEnabledLabel');
+    cb.checked = enabled;
+    label.textContent = enabled ? 'Yoqilgan' : 'O\'chirilgan';
+    label.className = enabled ? 'text-sm font-medium text-blue-600' : 'text-sm font-medium text-gray-500';
+}
+
+function onToggleChange() {
+    var enabled = document.getElementById('tgEnabled').checked;
+    setToggle(enabled);
+}
+
+// ── START ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', loadPage);
+</script>
+{% endblock %}

@@ -1,12 +1,234 @@
-2026-04-08 20:58:51,647 INFO: Davomat Tizimi startup [in /app/app.py:81]
-2026-04-08 20:58:51,650 INFO: Davomat Tizimi startup [in /app/app.py:81]
-2026-04-08 20:58:51,665 INFO: Davomat Tizimi startup [in /app/app.py:81]
-2026-04-08 20:58:51,698 INFO: Davomat Tizimi startup [in /app/app.py:81]
-2026-04-08 20:58:51,735 INFO: Database initialized successfully [in /app/app.py:111]
-2026-04-08 20:58:51,738 INFO: Database initialized successfully [in /app/app.py:111]
-2026-04-08 20:58:51,742 INFO: Database initialized successfully [in /app/app.py:111]
-2026-04-08 20:58:51,755 INFO: Database initialized successfully [in /app/app.py:111]
-2026-04-08 20:58:51,777 INFO: Super admin admin@attendance.com already exists [in /app/app.py:41]
-2026-04-08 20:58:51,777 INFO: Super admin admin@attendance.com already exists [in /app/app.py:41]
-2026-04-08 20:58:51,785 INFO: Super admin admin@attendance.com already exists [in /app/app.py:41]
-2026-04-08 20:58:51,797 INFO: Super admin admin@attendance.com already exists [in /app/app.py:41]
+2026-04-08 21:37:47,068 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-08 21:37:47,069 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-08 21:37:47,069 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-08 21:37:47,069 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-08 21:37:47,157 ERROR: Database initialization failed: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "pg_type_typname_nsp_index"
+DETAIL:  Key (typname, typnamespace)=(telegram_settings, 2200) already exists.
+
+[SQL: 
+CREATE TABLE telegram_settings (
+	id VARCHAR(36) NOT NULL, 
+	company_id VARCHAR(36) NOT NULL, 
+	group_chat_id VARCHAR(100), 
+	group_name VARCHAR(255), 
+	notify_checkin BOOLEAN, 
+	notify_checkout BOOLEAN, 
+	notify_late BOOLEAN, 
+	notify_absent BOOLEAN, 
+	is_enabled BOOLEAN, 
+	created_at TIMESTAMP WITH TIME ZONE, 
+	updated_at TIMESTAMP WITH TIME ZONE, 
+	PRIMARY KEY (id), 
+	UNIQUE (company_id), 
+	FOREIGN KEY(company_id) REFERENCES companies (id)
+)
+
+]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) [in /app/app.py:115]
+2026-04-08 21:37:47,157 ERROR: Database initialization failed: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "pg_type_typname_nsp_index"
+DETAIL:  Key (typname, typnamespace)=(telegram_settings, 2200) already exists.
+
+[SQL: 
+CREATE TABLE telegram_settings (
+	id VARCHAR(36) NOT NULL, 
+	company_id VARCHAR(36) NOT NULL, 
+	group_chat_id VARCHAR(100), 
+	group_name VARCHAR(255), 
+	notify_checkin BOOLEAN, 
+	notify_checkout BOOLEAN, 
+	notify_late BOOLEAN, 
+	notify_absent BOOLEAN, 
+	is_enabled BOOLEAN, 
+	created_at TIMESTAMP WITH TIME ZONE, 
+	updated_at TIMESTAMP WITH TIME ZONE, 
+	PRIMARY KEY (id), 
+	UNIQUE (company_id), 
+	FOREIGN KEY(company_id) REFERENCES companies (id)
+)
+
+]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) [in /app/app.py:115]
+2026-04-08 21:37:47,157 ERROR: Database initialization failed: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "pg_type_typname_nsp_index"
+DETAIL:  Key (typname, typnamespace)=(telegram_settings, 2200) already exists.
+
+[SQL: 
+CREATE TABLE telegram_settings (
+	id VARCHAR(36) NOT NULL, 
+	company_id VARCHAR(36) NOT NULL, 
+	group_chat_id VARCHAR(100), 
+	group_name VARCHAR(255), 
+	notify_checkin BOOLEAN, 
+	notify_checkout BOOLEAN, 
+	notify_late BOOLEAN, 
+	notify_absent BOOLEAN, 
+	is_enabled BOOLEAN, 
+	created_at TIMESTAMP WITH TIME ZONE, 
+	updated_at TIMESTAMP WITH TIME ZONE, 
+	PRIMARY KEY (id), 
+	UNIQUE (company_id), 
+	FOREIGN KEY(company_id) REFERENCES companies (id)
+)
+
+]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) [in /app/app.py:115]
+2026-04-08 21:37:47,182 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-08 21:37:47,216 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-08 21:38:58,091 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-08 21:38:58,134 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-08 21:38:58,171 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-08 21:41:15,952 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-08 21:41:15,952 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-08 21:41:15,954 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-08 21:41:16,001 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-08 21:41:16,011 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-08 21:41:16,014 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-08 21:41:16,017 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-08 21:41:16,049 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-08 21:41:16,050 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-08 21:41:16,050 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-08 21:41:16,053 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-08 21:41:16,085 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 09:37:35,051 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 09:37:35,051 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 09:37:35,051 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 09:37:35,051 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 09:37:35,130 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 09:37:35,132 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 09:37:35,134 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 09:37:35,137 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 09:37:35,164 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 09:37:35,167 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 09:37:35,168 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 09:37:35,169 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 09:42:19,299 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 09:42:19,299 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 09:42:19,304 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 09:42:19,353 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 09:42:19,357 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 09:42:19,359 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 09:42:19,386 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 09:42:19,391 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 09:42:19,395 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 09:42:19,395 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 09:42:19,439 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 09:42:19,472 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 09:55:57,880 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 09:55:57,880 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 09:55:57,880 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 09:55:57,880 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 09:55:57,959 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 09:55:57,961 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 09:55:57,964 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 09:55:57,966 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 09:55:57,993 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 09:55:57,993 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 09:55:57,998 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 09:55:57,999 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 10:01:26,180 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 10:01:26,180 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 10:01:26,217 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 10:01:26,237 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 10:01:26,239 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 10:01:26,270 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 10:01:26,270 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 10:01:26,274 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 10:01:26,306 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 10:01:26,326 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 10:01:26,372 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 10:01:26,405 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 10:15:06,964 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 10:15:06,964 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 10:15:06,964 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 10:15:06,964 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-09 10:15:07,040 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 10:15:07,042 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 10:15:07,045 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 10:15:07,048 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-09 10:15:07,075 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 10:15:07,075 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 10:15:07,077 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-09 10:15:07,083 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 11:42:56,928 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 11:42:56,928 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 11:42:56,928 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 11:42:56,927 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 11:42:57,152 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 11:42:57,155 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 11:42:57,157 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 11:42:57,159 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 11:42:57,185 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 11:42:57,186 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 11:42:57,187 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 11:42:57,189 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:35:51,939 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:35:51,939 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:35:51,939 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:35:51,939 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:35:52,100 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:35:52,107 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:35:52,115 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:35:52,119 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:35:52,133 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:35:52,136 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:35:52,145 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:35:52,149 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:37:01,560 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:37:01,560 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:37:01,560 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:37:01,560 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:37:01,634 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:37:01,636 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:37:01,638 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:37:01,640 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:37:01,664 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:37:01,666 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:37:01,669 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:37:01,669 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:42:01,103 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:42:01,103 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:42:01,103 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:42:01,103 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:42:01,150 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:42:01,153 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:42:01,154 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:42:01,157 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:42:01,177 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:42:01,180 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:42:01,182 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:42:01,184 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:42:43,708 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:42:43,708 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:42:43,745 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:42:43,761 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:42:43,763 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:42:43,782 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:42:43,792 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:42:43,792 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:42:43,812 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:42:43,847 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:42:43,884 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:42:43,913 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:47:51,350 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:47:51,350 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:47:51,350 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:47:51,350 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:47:51,414 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:47:51,415 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:47:51,418 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:47:51,420 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:47:51,444 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:47:51,444 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:47:51,446 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:47:51,448 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:50:31,829 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:50:31,829 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:50:31,829 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:50:31,829 INFO: Davomat Tizimi startup [in /app/app.py:82]
+2026-04-19 12:50:31,900 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:50:31,902 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:50:31,904 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:50:31,906 INFO: Database initialized successfully [in /app/app.py:112]
+2026-04-19 12:50:31,930 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:50:31,932 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:50:31,932 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]
+2026-04-19 12:50:31,934 INFO: Super admin admin@attendance.com already exists [in /app/app.py:42]

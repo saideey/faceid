@@ -98,6 +98,7 @@ class Company(Base):
     employee_leaves = relationship("EmployeeLeave", back_populates="company")  # YANGI
     work_time_overrides = relationship("WorkTimeOverride", back_populates="company", cascade="all, delete-orphan")
     special_day_offs = relationship("SpecialDayOff", back_populates="company", cascade="all, delete-orphan")
+    telegram_settings = relationship("TelegramSettings", back_populates="company", uselist=False, cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -852,6 +853,110 @@ class SpecialDayOff(Base):
 
 
 # ========================================
+# TELEGRAM BOT MODELLARI
+# ========================================
+
+class TelegramSettings(Base):
+    """
+    Har bir kompaniya uchun Telegram bot sozlamalari.
+    - bot_token: Bot tokenni global .env dan olish mumkin,
+                 lekin har kompaniya o'z guruhiga ega bo'ladi.
+    - group_chat_id: Xabarlar yuboriladigan Telegram guruh ID si
+    - notify_checkin: Kirish xabari yuboriladimi
+    - notify_late: Kechikish xabari yuboriladimi
+    """
+    __tablename__ = 'telegram_settings'
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    company_id = Column(String(36), ForeignKey('companies.id'), unique=True, nullable=False)
+
+    # Guruh sozlamalari
+    group_chat_id = Column(String(100), nullable=True)    # Telegram guruh ID (masalan: -1001234567890)
+    group_name = Column(String(255), nullable=True)        # Guruh nomi (ma'lumot uchun)
+
+    # Xabar sozlamalari
+    notify_checkin = Column(Boolean, default=True)         # Kirish xabari
+    notify_checkout = Column(Boolean, default=False)       # Chiqish xabari
+    notify_late = Column(Boolean, default=True)            # Kechikish xabari
+    notify_absent = Column(Boolean, default=False)         # Kelmaganlik xabari
+
+    # Bot yoqilgan/o'chirilgan
+    is_enabled = Column(Boolean, default=False)
+
+    created_at = Column(DateTime(timezone=True), default=get_tashkent_time)
+    updated_at = Column(DateTime(timezone=True), default=get_tashkent_time, onupdate=get_tashkent_time)
+
+    # Relationships
+    company = relationship("Company", back_populates="telegram_settings")
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'company_id': self.company_id,
+            'group_chat_id': self.group_chat_id,
+            'group_name': self.group_name,
+            'notify_checkin': self.notify_checkin,
+            'notify_checkout': self.notify_checkout,
+            'notify_late': self.notify_late,
+            'notify_absent': self.notify_absent,
+            'is_enabled': self.is_enabled,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class TelegramUser(Base):
+    """
+    Xodim va Telegram foydalanuvchisi o'rtasidagi bog'lanish.
+    Xodim botga /start yuborsa, telefon raqami orqali tasdiqlanadi.
+    Shundan keyin xodim faqat o'zining ma'lumotlarini ko'ra oladi.
+    """
+    __tablename__ = 'telegram_users'
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    employee_id = Column(String(36), ForeignKey('employees.id'), nullable=False)
+    company_id = Column(String(36), ForeignKey('companies.id'), nullable=False)
+
+    # Telegram ma'lumotlari
+    telegram_user_id = Column(String(50), unique=True, nullable=False)   # Telegram user ID
+    telegram_username = Column(String(255), nullable=True)                # @username
+    telegram_phone = Column(String(50), nullable=True)                    # Tasdiqlangan telefon raqam
+    first_name = Column(String(255), nullable=True)
+
+    # Tasdiqlash holati
+    is_verified = Column(Boolean, default=False)       # Telefon orqali tasdiqlangan
+    verification_code = Column(String(10), nullable=True)  # Bir martalik kod
+    verification_expires = Column(DateTime(timezone=True), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), default=get_tashkent_time)
+    updated_at = Column(DateTime(timezone=True), default=get_tashkent_time, onupdate=get_tashkent_time)
+
+    __table_args__ = (
+        Index('idx_tg_user_employee', 'employee_id'),
+        Index('idx_tg_user_company', 'company_id'),
+        Index('idx_tg_user_telegram_id', 'telegram_user_id'),
+    )
+
+    # Relationships
+    employee = relationship("Employee")
+    company = relationship("Company")
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'employee_id': self.employee_id,
+            'employee_name': self.employee.full_name if self.employee else None,
+            'company_id': self.company_id,
+            'telegram_user_id': self.telegram_user_id,
+            'telegram_username': self.telegram_username,
+            'telegram_phone': self.telegram_phone,
+            'first_name': self.first_name,
+            'is_verified': self.is_verified,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# ========================================
 # DATABASE INITIALIZATION & MIGRATION
 # ========================================
 
@@ -1108,6 +1213,58 @@ def run_migrations():
             print("  ✅ Overtime bonus columns added!")
         except Exception as e:
             print(f"  ⚠️ Overtime bonus columns skipped (may already exist): {e}")
+
+        # ==========================================
+        # 7. TELEGRAM JADVALLARINI YARATISH
+        # ==========================================
+        if not table_exists('telegram_settings'):
+            print("  📦 Creating 'telegram_settings' table...")
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS telegram_settings (
+                    id VARCHAR(36) PRIMARY KEY,
+                    company_id VARCHAR(36) NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+                    group_chat_id VARCHAR(100),
+                    group_name VARCHAR(255),
+                    notify_checkin BOOLEAN DEFAULT TRUE,
+                    notify_checkout BOOLEAN DEFAULT FALSE,
+                    notify_late BOOLEAN DEFAULT TRUE,
+                    notify_absent BOOLEAN DEFAULT FALSE,
+                    is_enabled BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    UNIQUE(company_id)
+                );
+            """))
+            conn.commit()
+            print("  ✅ 'telegram_settings' table created!")
+        else:
+            print("  ✅ 'telegram_settings' already exists, skipping...")
+
+        if not table_exists('telegram_users'):
+            print("  📦 Creating 'telegram_users' table...")
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS telegram_users (
+                    id VARCHAR(36) PRIMARY KEY,
+                    employee_id VARCHAR(36) NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+                    company_id VARCHAR(36) NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+                    telegram_user_id VARCHAR(50) UNIQUE NOT NULL,
+                    telegram_username VARCHAR(255),
+                    telegram_phone VARCHAR(50),
+                    first_name VARCHAR(255),
+                    is_verified BOOLEAN DEFAULT FALSE,
+                    verification_code VARCHAR(10),
+                    verification_expires TIMESTAMP WITH TIME ZONE,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_tg_user_employee ON telegram_users(employee_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_tg_user_company ON telegram_users(company_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_tg_user_telegram_id ON telegram_users(telegram_user_id);"))
+            conn.commit()
+            print("  ✅ 'telegram_users' table created!")
+        else:
+            print("  ✅ 'telegram_users' already exists, skipping...")
 
     print("✅ Database migrations completed!")
 
